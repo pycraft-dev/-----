@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_title">Синхронизация</string>
+    <string name="sync_pending_header">Очередь на сервер</string>
+    <string name="sync_pending_defects">Заявки брака (PENDING): %d</string>
+    <string name="sync_pending_messages">Сообщения чатов (PENDING): %d</string>
+    <string name="sync_workmanager_header">WorkManager</string>
+    <string name="sync_immediate_state">Разовая задача: %1$s</string>
+    <string name="sync_periodic_state">Периодическая (≈15 мин): %1$s</string>
+    <string name="sync_periodic_hint">Периодический запуск требует сети. Интервал ограничен минимумом WorkManager.</string>
+    <string name="sync_conflict_hint">Конфликты (этап сервера): планируется last-write-wins по метке времени и версии сущности.</string>
+    <string name="sync_run_now">Синхронизировать сейчас</string>
+
+    <string name="sync_wm_none">нет активной задачи</string>
+    <string name="sync_wm_enqueued">в очереди</string>
+    <string name="sync_wm_running">выполняется</string>
+    <string name="sync_wm_succeeded">успешно</string>
+    <string name="sync_wm_failed">ошибка</string>
+    <string name="sync_wm_blocked">заблокировано</string>
+    <string name="sync_wm_cancelled">отменено</string>
+</resources>

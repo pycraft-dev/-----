@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_nav_login">Вход</string>
+    <string name="core_nav_home">Главная</string>
+    <string name="core_nav_admin">Администрирование</string>
+    <string name="core_role_guard_denied">Недостаточно прав для раздела.</string>
+    <string name="core_stub_login_title">Экран входа</string>
+    <string name="core_stub_home_title">Рабочий стол</string>
+    <string name="core_stub_admin_title">Админ-панель</string>
+    <string name="core_stub_stage_hint">Заглушка этапа 1. Дальше — модуль :auth.</string>
+    <string name="core_role_check">Проверка прав…</string>
+    <string name="core_sign_out">Выйти</string>
+    <string name="core_open_admin">Администрирование</string>
+    <string name="core_open_defects">Фиксация брака</string>
+    <string name="core_open_drawings">Чертежи</string>
+    <string name="core_open_timesheet">Учёт времени</string>
+    <string name="core_open_updates">Обновления</string>
+    <string name="core_open_sync">Синхронизация</string>
+    <string name="core_open_general_chat">Мессенджер</string>
+    <string name="general_chat_title">Общий чат</string>
+    <string name="general_chat_message_hint">Сообщение</string>
+    <string name="general_chat_send">Отправить</string>
+    <string name="chat_hub_title">Чаты</string>
+    <string name="chat_drawer_channels">Каналы</string>
+    <string name="chat_channel_general">Общий чат</string>
+    <string name="chat_drawer_sections">Разделы приложения</string>
+    <string name="chat_drawer_desktop">Рабочий стол</string>
+    <string name="chat_drawer_people">Сотрудники</string>
+    <string name="chat_presence_hint">Онлайн: только вы, пока открыт чат (без сервера «кто в сети» для других устройств неизвестен).</string>
+    <string name="chat_recording">Идёт запись…</string>
+    <string name="chat_cancel_record">Отмена</string>
+    <string name="chat_add_transcript">Добавить расшифровку (голосом)</string>
+    <string name="chat_speech_prompt">Произнесите текст — он добавится к расшифровке сообщения</string>
+    <string name="chat_attachment_missing">Вложение отсутствует на устройстве</string>
+</resources>

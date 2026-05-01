@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <string name="drawing_list_title">Чертежи и документы</string>
+
+    <string name="drawing_upload_title">Загрузка версии</string>
+
+    <string name="drawing_detail_title">Версия документа</string>
+
+    <string name="drawing_pick_file">Выбрать PDF или DWG</string>
+
+    <string name="drawing_series_title_hint">Название серии (новый комплект версий)</string>
+
+    <string name="drawing_series_existing">Серия: %1$s</string>
+
+    <string name="drawing_change_description">Описание изменений</string>
+
+    <string name="drawing_save">Сохранить</string>
+
+    <string name="drawing_empty_list">Нет загруженных версий. Для конструктора и администратора доступна кнопка «+».</string>
+
+    <string name="drawing_row_meta">%1$s · v%2$d · %3$s</string>
+
+    <string name="drawing_open_detail">Открыть</string>
+
+    <string name="drawing_preview_unsupported">Предпросмотр для «.%1$s» не поддерживается (используйте PDF или внешнее ПО).</string>
+
+    <string name="drawing_versions_in_series">Версии в серии</string>
+
+    <string name="drawing_new_version">Новая версия</string>
+
+    <string name="drawing_status_draft">Черновик</string>
+
+    <string name="drawing_status_on_approval">На согласовании</string>
+
+    <string name="drawing_status_approved">Утверждено</string>
+
+    <string name="drawing_detail_meta">Версия %1$d · %2$s · автор #%3$d</string>
+
+    <string name="drawing_detail_change_note">Описание изменений</string>
+
+    <string name="drawing_detail_no_description">(нет описания)</string>
+
+    <string name="drawing_status_block_title">Статус</string>
+
+    <string name="drawing_pdf_render_failed">Не удалось построить превью PDF.</string>
+
+    <string name="drawing_picked_uri">Файл: %1$s</string>
+
+
+
+    <string name="drawing_err_no_file">Выберите файл.</string>
+
+    <string name="drawing_err_no_session">Сессия недоступна. Войдите снова.</string>
+
+    <string name="drawing_err_bad_file">Допустимы только PDF и DWG.</string>
+
+    <string name="drawing_err_empty_title">Укажите название серии.</string>
+
+    <string name="drawing_err_generic">Не удалось сохранить файл.</string>
+
+    <string name="drawing_chat_title">Чат по чертежу</string>
+    <string name="drawing_open_chat">Открыть чат</string>
+    <string name="drawing_message_hint">Сообщение</string>
+    <string name="drawing_send">Отправить</string>
+
+</resources>
+

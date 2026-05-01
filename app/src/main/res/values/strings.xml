@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Manufacturing Enterprise</string>
+    <string name="nav_login">Вход</string>
+    <string name="nav_home">Главная</string>
+    <string name="nav_admin">Администрирование</string>
+    <string name="role_guard_denied">Недостаточно прав для раздела.</string>
+    <string name="stub_login_title">Экран входа</string>
+    <string name="stub_home_title">Рабочий стол</string>
+    <string name="stub_admin_title">Админ-панель</string>
+    <string name="stub_stage_hint">Заглушка этапа 1 — модуль :auth подключится на следующем шаге.</string>
+</resources>

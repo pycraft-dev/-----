@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_login_title">Вход</string>
+    <string name="auth_field_login">Логин</string>
+    <string name="auth_field_password">Пароль</string>
+    <string name="auth_action_submit">Войти</string>
+    <string name="auth_error_invalid_credentials">Неверный логин или пароль.</string>
+    <string name="auth_error_generic">Не удалось выполнить вход. Повторите попытку.</string>
+</resources>

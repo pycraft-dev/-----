@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="admin_title">Управление пользователями</string>
+    <string name="admin_back">Назад</string>
+    <string name="admin_section_create">Новый пользователь</string>
+    <string name="admin_section_list">Пользователи</string>
+    <string name="admin_field_full_name">ФИО</string>
+    <string name="admin_field_position">Должность</string>
+    <string name="admin_field_group">Группа (префикс логина)</string>
+    <string name="admin_field_group_hint">рабочий, конструктор…</string>
+    <string name="admin_field_role">Роль</string>
+    <string name="admin_field_password">Начальный пароль</string>
+    <string name="admin_action_create">Создать</string>
+    <string name="admin_login_generated">Будет создан логин: %1$s</string>
+    <string name="admin_user_created">Пользователь создан. Логин: %1$s</string>
+    <string name="admin_empty_users">Пока нет пользователей в базе.</string>
+    <string name="admin_row_login">Логин: %1$s</string>
+    <string name="admin_row_group">Группа: %1$s</string>
+    <string name="admin_error_empty">Заполните все поля.</string>
+    <string name="admin_error_create">Не удалось создать пользователя.</string>
+    <string name="admin_role_admin">ADMIN</string>
+    <string name="admin_role_constructor">CONSTRUCTOR</string>
+    <string name="admin_role_worker">WORKER</string>
+    <string name="admin_role_master">MASTER</string>
+</resources>

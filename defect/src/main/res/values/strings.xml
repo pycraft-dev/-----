@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="defect_list_title">Заявки брака</string>
+    <string name="defect_new_title">Новая заявка</string>
+    <string name="defect_chat_title">Чат по заявке</string>
+    <string name="defect_new_capture">Сделать фото</string>
+    <string name="defect_notes_hint">Комментарий (необязательно)</string>
+    <string name="defect_save">Сохранить заявку</string>
+    <string name="defect_open_chat">Открыть чат</string>
+    <string name="defect_created">Заявка сохранена</string>
+    <string name="defect_empty_list">Нет заявок. Нажмите «Новая» на предыдущем экране.</string>
+    <string name="defect_row_meta">%1$s · автор #%2$d</string>
+    <string name="defect_permission_denied">Нужны разрешения камеры для фото.</string>
+    <string name="defect_capture_fail">Не удалось сохранить снимок.</string>
+    <string name="defect_send">Отправить</string>
+    <string name="defect_message_hint">Сообщение…</string>
+    <string name="defect_sync_stub_note">Фоновая синхронизация (WorkManager): заглушка помечает PENDING как SENT при сети.</string>
+</resources>
