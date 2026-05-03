@@ -49,8 +49,8 @@ android {
         applicationId = "com.enterprise.manufacturing"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.0.7"
+        versionCode = 7
+        versionName = "1.0.10"
     }
 
     fun envSigningVar(name: String): String? =
