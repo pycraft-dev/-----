@@ -1,3 +1,15 @@
 # Скопируйте в local.properties (файл не коммитить).
-# Полный HTTPS-URL JSON манифеста (поля versionCode, apkUrl, releaseNotes).
-# UPDATE_MANIFEST_URL=https://raw.githubusercontent.com/OWNER/REPO/branch/distribution/update.json
+#
+# --- Обновления приложения (модуль :update) ---
+# Полный HTTPS-URL на файл update.json (поля versionCode, apkUrl, releaseNotes).
+# Поддерживаются: любой прямой HTTPS, raw GitHub, Яндекс.Диск (публичная ссылка /i/… или папка /d/…).
+#
+# НЕ используйте URL вида https://disk.yandex.ru/client/disk — это веб-интерфейс, не файл.
+# На Диске: загрузите update.json → ПКМ → Поделиться → «Всем по ссылке» → скопируйте ссылку
+# (обычно https://disk.yandex.ru/i/… или https://yadi.sk/i/…).
+# Если шарите папку (/d/…), положите в КОРЕНЬ папки файл с именем ровно: update.json
+#
+# UPDATE_MANIFEST_URL=https://disk.yandex.ru/i/ВАШ_ИД_ПУБЛИКАЦИИ
+# UPDATE_MANIFEST_URL=https://raw.githubusercontent.com/OWNER/REPO/main/distribution/update.json
+#
+# То же значение можно задать в приложении: Админ → «Обновления приложения» (без пересборки APK на этом устройстве).

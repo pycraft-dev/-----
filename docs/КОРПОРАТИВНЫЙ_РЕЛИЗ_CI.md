@@ -8,7 +8,7 @@
 В проекте уже настроено:
 
 - подпись **release** из секретов CI **или** из файла `keystore.properties` локально;
-- workflow **`.github/workflows/release-bundle.yml`** — сборка **AAB** и **APK** и выкладка артефактов в GitHub Actions.
+- workflow **`.github/workflows/release-bundle.yml`** — сборка **AAB** и **APK**, при **push тега `v*`** ещё и **`update.json`** в тот же GitHub Release (см. ниже «только тег и push»).
 
 ---
 
@@ -90,7 +90,7 @@ git push -u origin main
 | `ANDROID_KEYSTORE_PASSWORD` | Пароль хранилища (тот же, что при `keytool`). |
 | `ANDROID_KEY_ALIAS` | Alias ключа, например **`upload`** (одна строка, без пробела и **без переноса строки** в конце — иначе Gradle пишет «No key with alias … found»). |
 | `ANDROID_KEY_PASSWORD` | Пароль ключа (часто совпадает с паролем хранилища). |
-| `UPDATE_MANIFEST_URL` (необязательно) | Полный HTTPS-URL файла **`update.json`** для вшивания в APK на CI (см. часть C2). Если не задан — в релизном APK остаётся пустой URL (режим заглушки). |
+| `UPDATE_MANIFEST_URL` (необязательно) | Полный HTTPS-URL файла **`update.json`** для вшивания в APK на CI (см. часть C2). Для схемы «только `git tag` + push» задайте **один раз** URL вида `https://github.com/OWNER/REPO/releases/latest/download/update.json` (свой owner/repo). Если не задан — в релизном APK остаётся пустой URL (режим заглушки). |
 
 Проверка алиаса на ПК: `keytool -list -keystore upload-keystore.jks` — в списке будет строка вида **`upload`**, … **`PrivateKeyEntry`**.
 
@@ -173,6 +173,8 @@ git push origin v1.0.1
 
 ---
 
+Ручная сборка **`update.json`** на ПК: папка **`scripts/`** — **`generate-update-json.bat`** (консоль спросит ссылку на APK и `versionCode`), подробнее в **`scripts/README-update-json.md`**.
+
 ## Часть C2. Без магазина и без MDM: самообновление с вашего канала (в т.ч. GitHub)
 
 Полностью «в фоне без единого нажатия» на обычных телефонах Android **не гарантируется** (политика безопасности установки). Реалистичная схема для **только свои сотрудники**:
@@ -182,9 +184,37 @@ git push origin v1.0.1
 3. **В приложении** — экран «Обновления»: проверка манифеста, при большем `versionCode` — скачивание APK и запуск установщика (один раз выдать разрешение «установка из этого источника»).
 4. **Где лежит JSON и APK** — любой стабильный HTTPS: корпоративный сайт, объект в облаке с публичной ссылкой, **GitHub Releases** (публичный репозиторий: прямые ссылки на ассеты удобны). Для **приватного** репозитория ссылки на файлы в Releases требуют авторизации — проще вынести **`update.json` + APK** на отдельный публичный хостинг или открытую ветку/`gh-pages` только с артефактами.
 
+**Яндекс.Диск:** в `UPDATE_MANIFEST_URL` указывайте **публичную ссылку на файл** (`https://disk.yandex.ru/i/…` или `https://yadi.sk/i/…`), а не адрес веб-клиента `…/client/disk`. Для **папки** с типом ссылки `/d/…` в корне шаринга должен лежать файл **`update.json`** — приложение само запросит у API Диска прямую загрузку ([описание публичных ресурсов](https://yandex.ru/dev/disk/api/concepts/public.html)). То же разрешение прямой ссылки используется при скачивании **APK**, если в `apkUrl` указан такой же тип ссылки на Диск.
+
 Манифест **`update.json`** приложение запрашивает по HTTPS из **`UPDATE_MANIFEST_URL`**: в корне проекта в **`local.properties`** добавьте строку `UPDATE_MANIFEST_URL=https://…/update.json` (скопируйте из примера **`local.properties.example`**). В CI можно задать ту же переменную **окружения** `UPDATE_MANIFEST_URL` перед `gradlew`, чтобы в APK попала боевая ссылка. Если URL пустой, используется локальная заглушка без сети.
 
-Цикл для вас: увеличили **`versionCode`** → собрали **APK** → выложили файл и обновили **`update.json`** → сотрудники открыли приложение (или по таймеру проверка) → предложение обновиться → установка.
+### «Только `git tag` и `git push`» — без ручного редактирования `update.json`
+
+Workflow **`.github/workflows/release-bundle.yml`** при **push тега `v*`** (после успешной сборки):
+
+1. Считывает **`versionCode`** из собранного **`app-release.apk`** (`aapt dump badging`).
+2. Создаёт файл **`update.json`** с полями `versionCode`, **`apkUrl`** = `https://github.com/<owner>/<repo>/releases/latest/download/app-release.apk`, `releaseNotes`.
+3. Загружает **`update.json`** в **тот же** GitHub Release, что и AAB/APK.
+
+**Один раз настройте** секрет **`UPDATE_MANIFEST_URL`** (и пересоберите релизный APK в CI или локально с тем же значением в `local.properties`):
+
+`https://github.com/OWNER/REPO/releases/latest/download/update.json`
+
+Дальше на каждом релизе достаточно:
+
+1. Увеличить **`versionCode`** (и при желании **`versionName`**) в **`app/build.gradle.kts`**, закоммитить и запушить ветку.
+2. Поставить тег и отправить его:
+
+```bash
+git tag v1.0.4
+git push origin v1.0.4
+```
+
+После успешного Actions у сотрудников при следующей проверке обновлений (экран «Обновление» или фоновая задача) подтянется новый манифест; **URL в APK менять не нужно**. Установка APK по-прежнему требует действия пользователя (политика Android), полностью «тихая» переустановка без MDM/магазина не гарантируется.
+
+**Репозиторий должен быть публичным** (или артефакты Releases доступны анонимно по HTTPS), иначе телефон без токена не скачает `update.json`/APK с GitHub.
+
+Цикл вручную (без CI-генерации JSON): увеличили **`versionCode`** → собрали **APK** → выложили файл и обновили **`update.json`** → сотрудники открыли приложение (или по таймеру проверка) → предложение обновиться → установка.
 
 **Пример `update.json`** (положите по HTTPS там, откуда приложение реально ходит за манифестом — см. модуль `update` и `UpdateModule.kt`; **`versionCode`** должен совпадать с `defaultConfig.versionCode` в новой сборке и быть **больше**, чем у установленного приложения):
 
@@ -195,6 +225,15 @@ git push origin v1.0.1
   "releaseNotes": "Исправления и улучшения."
 }
 ```
+
+**Стабильная ссылка на APK (автообновление без смены `apkUrl` в JSON):** в GitHub для **публичного** репозитория есть URL вида  
+`https://github.com/OWNER/REPO/releases/latest/download/app-release.apk`  
+— он всегда ведёт на **последний** релиз с файлом **ровно с таким именем** (`app-release.apk`). Тогда при каждом выпуске вы:
+
+1. Создаёте новый Release и прикрепляете ассет с **тем же именем** (`app-release.apk`).
+2. В **`update.json`** меняете только **`versionCode`** (и при желании `releaseNotes`); поле **`apkUrl`** можно **не трогать** — ссылка `…/releases/latest/download/…` остаётся одной и той же.
+
+Сам **`update.json`** держите по **постоянному** адресу (например `raw.githubusercontent.com/…/main/update.json` или свой домен), чтобы в APK в `UPDATE_MANIFEST_URL` ничего не пересобирать.
 
 На телефоне: экран обновлений в приложении → проверка → скачивание APK → установка (подпись APK должна быть **той же**, что у уже установленной версии).
 

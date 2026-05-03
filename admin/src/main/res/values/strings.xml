@@ -30,4 +30,13 @@
     <string name="admin_role_constructor">CONSTRUCTOR</string>
     <string name="admin_role_worker">WORKER</string>
     <string name="admin_role_master">MASTER</string>
+    <string name="admin_section_update_manifest">Обновления приложения</string>
+    <string name="admin_manifest_hint">HTTPS-ссылка на файл update.json. Сохраняется на этом устройстве и заменяет адрес из сборки. На других телефонах введите снова или оставьте только URL в сборке.</string>
+    <string name="admin_manifest_field">URL update.json</string>
+    <string name="admin_manifest_save">Сохранить ссылку</string>
+    <string name="admin_manifest_clear">Сбросить (как в APK)</string>
+    <string name="admin_manifest_saved">Ссылка сохранена. Экран «Обновление» подхватит её при следующей проверке.</string>
+    <string name="admin_manifest_cleared">Переопределение снято, используется адрес из сборки (если задан).</string>
+    <string name="admin_manifest_https_only">Нужен адрес на HTTPS (с https:// в начале).</string>
+    <string name="admin_manifest_save_failed">Не удалось сохранить ссылку.</string>
 </resources>

@@ -70,7 +70,9 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
 
       # При ручном запуске (workflow_dispatch) релиз не создаётся — только Artifacts.
-      - name: GitHub Release (только при push тега v*)
+      # При push тега v*: релиз + update.json (versionCode из APK) → клиенты с UPDATE_MANIFEST_URL на
+      # https://github.com/<owner>/<repo>/releases/latest/download/update.json получают обновление без смены URL.
+      - name: GitHub Release + update.json (только при push тега v*)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,10 +81,19 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           AAB=$(ls app/build/outputs/bundle/release/*.aab | head -n1)
           APK=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          AAPT="${ANDROID_HOME}/build-tools/35.0.0/aapt"
+          VC=$("$AAPT" dump badging "$APK" | head -1 | grep -oP "versionCode='\K\d+")
+          APK_URL="https://github.com/${{ github.repository }}/releases/latest/download/app-release.apk"
+          jq -n \
+            --argjson vc "$VC" \
+            --arg apk "$APK_URL" \
+            --arg notes "Релиз ${TAG}." \
+            '{versionCode: $vc, apkUrl: $apk, releaseNotes: $notes}' > update.json
+          echo "Generated update.json:" && cat update.json
           if gh release view "$TAG" --repo "${{ github.repository }}" 2>/dev/null; then
-            gh release upload "$TAG" "$AAB" "$APK" --repo "${{ github.repository }}" --clobber
+            gh release upload "$TAG" "$AAB" "$APK" update.json --repo "${{ github.repository }}" --clobber
           else
-            gh release create "$TAG" "$AAB" "$APK" \
+            gh release create "$TAG" "$AAB" "$APK" update.json \
               --repo "${{ github.repository }}" \
               --title "$TAG" \
               --generate-notes

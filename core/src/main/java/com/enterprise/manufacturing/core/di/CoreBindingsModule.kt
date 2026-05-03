@@ -1,5 +1,7 @@
 package com.enterprise.manufacturing.core.di
 
+import com.enterprise.manufacturing.core.settings.UpdateManifestUrlSettings
+import com.enterprise.manufacturing.core.settings.UpdateManifestUrlSettingsImpl
 import com.enterprise.manufacturing.core.utils.DefaultDispatchersProvider
 import com.enterprise.manufacturing.core.utils.DispatchersProvider
 import dagger.Binds
@@ -16,4 +18,10 @@ abstract class CoreBindingsModule {
     abstract fun bindDispatchersProvider(
         impl: DefaultDispatchersProvider,
     ): DispatchersProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindUpdateManifestUrlSettings(
+        impl: UpdateManifestUrlSettingsImpl,
+    ): UpdateManifestUrlSettings
 }

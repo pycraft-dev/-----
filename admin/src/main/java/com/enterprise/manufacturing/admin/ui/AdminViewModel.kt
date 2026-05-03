@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.enterprise.manufacturing.admin.R
 import com.enterprise.manufacturing.admin.data.AdminUsersRepository
 import com.enterprise.manufacturing.core.data.RolesRepository
+import com.enterprise.manufacturing.core.settings.UpdateManifestUrlSettings
 import com.enterprise.manufacturing.core.db.entity.RoleDefinitionEntity
 import com.enterprise.manufacturing.core.db.entity.UserEntity
 import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
@@ -12,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,12 +31,17 @@ data class AdminUiState(
     val errorMessageRes: Int? = null,
     /** Последнее сообщение после добавления роли (локальное, не из strings). */
     val addRoleMessage: String? = null,
+    /** HTTPS на `update.json` (переопределение; пусто — из сборки `UPDATE_MANIFEST_URL`). */
+    val updateManifestUrlDraft: String = "",
+    val updateManifestFeedbackRes: Int? = null,
+    val updateManifestFeedbackIsError: Boolean = false,
 )
 
 @HiltViewModel
 class AdminViewModel @Inject constructor(
     private val adminUsersRepository: AdminUsersRepository,
     private val rolesRepository: RolesRepository,
+    private val manifestUrlSettings: UpdateManifestUrlSettings,
 ) : ViewModel() {
 
     val users: StateFlow<List<UserEntity>> =
@@ -56,7 +63,68 @@ class AdminViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            val saved = manifestUrlSettings.observeOverride().first()
+            _form.update { it.copy(updateManifestUrlDraft = saved) }
+        }
+        viewModelScope.launch {
             refreshNextLoginPreview(_form.value.selectedRoleCode)
+        }
+    }
+
+    fun onUpdateManifestUrlDraftChange(value: String) {
+        _form.update {
+            it.copy(
+                updateManifestUrlDraft = value,
+                updateManifestFeedbackRes = null,
+                updateManifestFeedbackIsError = false,
+            )
+        }
+    }
+
+    fun saveUpdateManifestUrl() {
+        val t = _form.value.updateManifestUrlDraft.trim()
+        if (t.isNotEmpty() && !t.startsWith("https://")) {
+            _form.update {
+                it.copy(
+                    updateManifestFeedbackRes = R.string.admin_manifest_https_only,
+                    updateManifestFeedbackIsError = true,
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            runCatching { manifestUrlSettings.setManifestUrlOverride(_form.value.updateManifestUrlDraft) }
+                .onSuccess {
+                    val after = manifestUrlSettings.observeOverride().first()
+                    _form.update {
+                        it.copy(
+                            updateManifestUrlDraft = after,
+                            updateManifestFeedbackRes = R.string.admin_manifest_saved,
+                            updateManifestFeedbackIsError = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _form.update {
+                        it.copy(
+                            updateManifestFeedbackRes = R.string.admin_manifest_save_failed,
+                            updateManifestFeedbackIsError = true,
+                        )
+                    }
+                }
+        }
+    }
+
+    fun clearUpdateManifestUrlOverride() {
+        viewModelScope.launch {
+            manifestUrlSettings.clearManifestUrlOverride()
+            _form.update {
+                it.copy(
+                    updateManifestUrlDraft = "",
+                    updateManifestFeedbackRes = R.string.admin_manifest_cleared,
+                    updateManifestFeedbackIsError = false,
+                )
+            }
         }
     }
 
@@ -149,6 +217,7 @@ class AdminViewModel @Inject constructor(
                         selectedRoleCode = current.selectedRoleCode,
                         nextLoginPreview = nextPreview,
                         statusCreatedLogin = login,
+                        updateManifestUrlDraft = current.updateManifestUrlDraft,
                     )
             } else {
                 val resId =

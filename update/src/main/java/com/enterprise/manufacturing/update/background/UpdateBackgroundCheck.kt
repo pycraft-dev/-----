@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.enterprise.manufacturing.core.navigation.LaunchIntentExtras
+import com.enterprise.manufacturing.core.settings.UpdateManifestUrlSettings
 import com.enterprise.manufacturing.update.BuildConfig
 import com.enterprise.manufacturing.update.R
 import com.enterprise.manufacturing.update.data.RemoteUpdateManifest
@@ -26,10 +27,12 @@ import javax.inject.Singleton
 class UpdateBackgroundCheck @Inject constructor(
     @ApplicationContext private val context: Context,
     private val updateRepository: UpdateRepository,
+    private val manifestUrlSettings: UpdateManifestUrlSettings,
 ) {
 
     suspend fun runIfConfigured() {
-        if (BuildConfig.UPDATE_MANIFEST_URL.isBlank()) return
+        val url = manifestUrlSettings.resolveEffectiveUrl(BuildConfig.UPDATE_MANIFEST_URL)
+        if (url.isBlank()) return
         val installed = installedVersionCode()
         val manifest = updateRepository.fetchManifest().getOrNull() ?: return
         if (manifest.latestVersionCode <= installed) return

@@ -72,6 +72,9 @@ fun AdminPanelRoute(
         onSubmit = viewModel::submit,
         onAddRole = viewModel::addCustomRole,
         onClearAddRoleMessage = viewModel::clearAddRoleMessage,
+        onUpdateManifestUrlDraftChange = viewModel::onUpdateManifestUrlDraftChange,
+        onSaveUpdateManifestUrl = viewModel::saveUpdateManifestUrl,
+        onClearUpdateManifestUrlOverride = viewModel::clearUpdateManifestUrlOverride,
     )
 }
 
@@ -89,6 +92,9 @@ fun AdminPanelScreen(
     onSubmit: () -> Unit,
     onAddRole: (String, String) -> Unit,
     onClearAddRoleMessage: () -> Unit,
+    onUpdateManifestUrlDraftChange: (String) -> Unit,
+    onSaveUpdateManifestUrl: () -> Unit,
+    onClearUpdateManifestUrlOverride: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAddRole by remember { mutableStateOf(false) }
@@ -116,6 +122,63 @@ fun AdminPanelScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item {
+                Text(
+                    text = stringResource(R.string.admin_section_update_manifest),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.admin_manifest_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            modifier = Modifier.fillMaxWidth(),
+                            value = state.updateManifestUrlDraft,
+                            onValueChange = onUpdateManifestUrlDraftChange,
+                            label = { Text(stringResource(R.string.admin_manifest_field)) },
+                            singleLine = false,
+                            minLines = 2,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                modifier = Modifier.weight(1f),
+                                onClick = onSaveUpdateManifestUrl,
+                            ) {
+                                Text(stringResource(R.string.admin_manifest_save))
+                            }
+                            OutlinedButton(onClick = onClearUpdateManifestUrlOverride) {
+                                Text(stringResource(R.string.admin_manifest_clear))
+                            }
+                        }
+                        state.updateManifestFeedbackRes?.let { resId ->
+                            Text(
+                                text = stringResource(resId),
+                                color =
+                                    if (state.updateManifestFeedbackIsError) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     text = stringResource(R.string.admin_section_roles_dictionary),
