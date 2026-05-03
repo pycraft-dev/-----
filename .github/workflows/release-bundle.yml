@@ -1,6 +1,9 @@
 # Сборка подписанного AAB + APK (см. docs/КОРПОРАТИВНЫЙ_РЕЛИЗ_CI.md)
 name: Release AAB + APK
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -63,3 +66,22 @@ jobs:
         with:
           name: manufacturing-enterprise-apk
           path: app/build/outputs/apk/release/*.apk
+
+      # При ручном запуске (workflow_dispatch) релиз не создаётся — только Artifacts.
+      - name: GitHub Release (только при push тега v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF#refs/tags/}"
+          AAB=$(ls app/build/outputs/bundle/release/*.aab | head -n1)
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          if gh release view "$TAG" --repo "${{ github.repository }}" 2>/dev/null; then
+            gh release upload "$TAG" "$AAB" "$APK" --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "$TAG" "$AAB" "$APK" \
+              --repo "${{ github.repository }}" \
+              --title "$TAG" \
+              --generate-notes
+          fi
