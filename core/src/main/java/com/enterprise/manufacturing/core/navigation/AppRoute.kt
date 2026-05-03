@@ -35,9 +35,19 @@ sealed class AppRoute(val route: String) {
     /** Статус синхронизации (`:sync`). */
     data object Sync : AppRoute("sync_hub")
 
-    /** Главный экран мессенджера (`:core`). */
-    data object ChatHub : AppRoute("chat_hub")
+    /** Список пользователей / чатов (`:core`). */
+    data object ChatList : AppRoute("chat_list")
+
+    /** Личный чат с пользователем (`:core`). */
+    data object DirectChat : AppRoute("direct_chat/{peerUserId}")
 }
+
+/** Имя аргумента NavController ↔ SavedStateHandle для [AppRoute.DirectChat]. */
+object DirectChatNavArgs {
+    const val PeerUserId = "peerUserId"
+}
+
+fun directChatPeerRoute(peerUserId: Long): String = "direct_chat/$peerUserId"
 
 /** Аргументы навигации для модуля чертежей. */
 object DrawingNavArgs {

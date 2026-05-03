@@ -33,7 +33,9 @@ class DefectChatViewModel @Inject constructor(
 
     fun send(text: String) {
         viewModelScope.launch {
-            val snap = authSessionRepository.observeSessionSnapshot().first()
+            val snap =
+                authSessionRepository.observeSessionSnapshot()
+                    .first { it !is SessionSnapshot.Loading }
             val active = snap as? SessionSnapshot.Active ?: return@launch
             defectRepository.sendTextMessage(defectId, active.userId, text)
         }

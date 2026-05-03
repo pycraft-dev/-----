@@ -32,7 +32,9 @@ class DefectCaptureViewModel @Inject constructor(
 
     fun submitCapturedPhoto(tempFile: File, notes: String?) {
         viewModelScope.launch {
-            val snap = authSessionRepository.observeSessionSnapshot().first()
+            val snap =
+                authSessionRepository.observeSessionSnapshot()
+                    .first { it !is SessionSnapshot.Loading }
             val active = snap as? SessionSnapshot.Active
             if (active == null) {
                 eventsChannel.send(DefectCaptureEvent.MissingSession)

@@ -15,6 +15,16 @@ interface GeneralChatMessageDao {
     @Query("SELECT * FROM general_chat_messages ORDER BY createdAtEpochMs ASC")
     fun observeThread(): Flow<List<GeneralChatMessageEntity>>
 
+    @Query(
+        """
+        SELECT * FROM general_chat_messages
+        WHERE (senderUserId = :currentUserId AND recipientUserId = :peerUserId)
+           OR (senderUserId = :peerUserId AND recipientUserId = :currentUserId)
+        ORDER BY createdAtEpochMs ASC
+        """,
+    )
+    fun observeDirectThread(peerUserId: Long, currentUserId: Long): Flow<List<GeneralChatMessageEntity>>
+
     @Query("SELECT * FROM general_chat_messages WHERE syncStatus = :status")
     suspend fun getBySyncStatus(status: String): List<GeneralChatMessageEntity>
 

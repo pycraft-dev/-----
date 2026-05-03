@@ -27,7 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
  * @param defectNewContent камера / создание заявки (:defect).
  * @param defectChatContent чат по заявке (:defect), аргумент маршрута читается через SavedStateHandle во ViewModel.
  * @param drawingChatContent чат по версии чертежа (:drawings).
- * @param chatHubContent главный чат-хаб (:core).
+ * @param chatListContent список чатов / пользователей (:core).
+ * @param directChatContent личный чат (:core), аргумент [DirectChatNavArgs.PeerUserId] во ViewModel.
  * @param drawingListContent список версий чертежей (:drawings).
  * @param drawingUploadContent загрузка новой версии PDF/DWG (:drawings).
  * @param drawingDetailContent карточка версии и превью PDF (:drawings).
@@ -54,7 +55,8 @@ fun EnterpriseNavHost(
     timesheetHistoryContent: @Composable () -> Unit,
     updateContent: @Composable () -> Unit,
     syncContent: @Composable () -> Unit,
-    chatHubContent: @Composable () -> Unit,
+    chatListContent: @Composable () -> Unit,
+    directChatContent: @Composable () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val snapshot by sessionSnapshot.collectAsStateWithLifecycle()
@@ -67,7 +69,7 @@ fun EnterpriseNavHost(
     val showTimesheetEntry = snapshot is SessionSnapshot.Active
     val showUpdateEntry = snapshot is SessionSnapshot.Active
     val showSyncEntry = snapshot is SessionSnapshot.Active
-    val showChatHubEntry = snapshot is SessionSnapshot.Active
+    val showMessengerEntry = snapshot is SessionSnapshot.Active
 
     LaunchedEffect(snapshot) {
         if (snapshot is SessionSnapshot.LoggedOut) {
@@ -105,8 +107,8 @@ fun EnterpriseNavHost(
                     }
 
                     is SessionSnapshot.Active -> {
-                        if (navController.currentDestination?.route != AppRoute.ChatHub.route) {
-                            navController.navigate(AppRoute.ChatHub.route) {
+                        if (navController.currentDestination?.route != AppRoute.ChatList.route) {
+                            navController.navigate(AppRoute.ChatList.route) {
                                 popUpTo(AppRoute.Bootstrap.route) { inclusive = true }
                                 launchSingleTop = true
                             }
@@ -154,9 +156,9 @@ fun EnterpriseNavHost(
                 onOpenSync = {
                     navController.navigate(AppRoute.Sync.route)
                 },
-                showChatHubEntry = showChatHubEntry,
-                onOpenChatHub = {
-                    navController.navigate(AppRoute.ChatHub.route)
+                showMessengerEntry = showMessengerEntry,
+                onOpenMessenger = {
+                    navController.navigate(AppRoute.ChatList.route)
                 },
             )
         }
@@ -166,7 +168,7 @@ fun EnterpriseNavHost(
                 allowedRoles = AdminDestinationRoles,
                 userRole = userRole,
                 onAccessDenied = {
-                    navController.navigate(AppRoute.ChatHub.route) {
+                    navController.navigate(AppRoute.ChatList.route) {
                         launchSingleTop = true
                     }
                 },
@@ -239,8 +241,18 @@ fun EnterpriseNavHost(
             syncContent()
         }
 
-        composable(route = AppRoute.ChatHub.route) {
-            chatHubContent()
+        composable(route = AppRoute.ChatList.route) {
+            chatListContent()
+        }
+
+        composable(
+            route = AppRoute.DirectChat.route,
+            arguments =
+                listOf(
+                    navArgument(DirectChatNavArgs.PeerUserId) { type = NavType.LongType },
+                ),
+        ) {
+            directChatContent()
         }
     }
 }

@@ -30,7 +30,7 @@ import com.enterprise.manufacturing.core.db.entity.UserEntity
         TimeCategoryEntity::class,
         TimeEntryEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

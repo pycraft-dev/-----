@@ -25,15 +25,16 @@ class GeneralChatRepositoryImpl @Inject constructor(
     private val dispatchers: DispatchersProvider,
 ) : GeneralChatRepository {
 
-    override fun observeMessages(): Flow<List<GeneralChatMessageEntity>> =
-        dao.observeThread()
+    override fun observeDirectMessages(peerUserId: Long, currentUserId: Long): Flow<List<GeneralChatMessageEntity>> =
+        dao.observeDirectThread(peerUserId, currentUserId)
 
-    override suspend fun sendText(senderUserId: Long, text: String) {
+    override suspend fun sendText(senderUserId: Long, recipientUserId: Long, text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
         withContext(dispatchers.io) {
             insertBase(
                 senderUserId = senderUserId,
+                recipientUserId = recipientUserId,
                 type = TeamChatMessageType.TEXT,
                 body = trimmed,
                 attachmentLocalPath = null,
@@ -45,11 +46,17 @@ class GeneralChatRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendVoiceMessage(senderUserId: Long, audioFile: File, durationMs: Long) {
+    override suspend fun sendVoiceMessage(
+        senderUserId: Long,
+        recipientUserId: Long,
+        audioFile: File,
+        durationMs: Long,
+    ) {
         if (!audioFile.exists()) return
         withContext(dispatchers.io) {
             insertBase(
                 senderUserId = senderUserId,
+                recipientUserId = recipientUserId,
                 type = TeamChatMessageType.VOICE,
                 body = "",
                 attachmentLocalPath = audioFile.absolutePath,
@@ -61,7 +68,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendFileMessage(senderUserId: Long, sourceUri: Uri, caption: String) {
+    override suspend fun sendFileMessage(senderUserId: Long, recipientUserId: Long, sourceUri: Uri, caption: String) {
         withContext(dispatchers.io) {
             val resolver = context.contentResolver
             val mime = resolver.getType(sourceUri)?.lowercase(Locale.US) ?: "application/octet-stream"
@@ -78,6 +85,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
 
             insertBase(
                 senderUserId = senderUserId,
+                recipientUserId = recipientUserId,
                 type = TeamChatMessageType.FILE,
                 body = caption.trim(),
                 attachmentLocalPath = dest.absolutePath,
@@ -86,6 +94,14 @@ class GeneralChatRepositoryImpl @Inject constructor(
                 voiceDurationMs = 0L,
                 transcript = "",
             )
+        }
+    }
+
+    override suspend fun setTranscript(messageId: Long, text: String) {
+        val t = text.trim()
+        if (t.isEmpty()) return
+        withContext(dispatchers.io) {
+            dao.updateTranscript(messageId, t)
         }
     }
 
@@ -102,6 +118,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
 
     private suspend fun insertBase(
         senderUserId: Long,
+        recipientUserId: Long,
         type: TeamChatMessageType,
         body: String,
         attachmentLocalPath: String?,
@@ -113,6 +130,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
         dao.insert(
             GeneralChatMessageEntity(
                 senderUserId = senderUserId,
+                recipientUserId = recipientUserId,
                 messageType = type.name,
                 body = body,
                 createdAtEpochMs = System.currentTimeMillis(),

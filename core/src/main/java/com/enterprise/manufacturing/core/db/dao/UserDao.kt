@@ -18,6 +18,9 @@ interface UserDao {
     @Query("SELECT * FROM users ORDER BY id ASC")
     fun observeAll(): Flow<List<UserEntity>>
 
+    @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
+    fun observeById(id: Long): Flow<UserEntity?>
+
     @Query("SELECT COUNT(*) FROM users")
     suspend fun countUsers(): Int
 }

@@ -1,25 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="timesheet_timer_title">Учёт времени</string>
-    <string name="timesheet_history_title">История интервалов</string>
-    <string name="timesheet_task_hint">Задача / операция</string>
-    <string name="timesheet_note_hint">Комментарий (необязательно)</string>
-    <string name="timesheet_category_label">Категория</string>
-    <string name="timesheet_cat_none">Без категории</string>
-    <string name="timesheet_start">Старт</string>
-    <string name="timesheet_stop">Стоп</string>
-    <string name="timesheet_elapsed">Прошло: %1$s</string>
-    <string name="timesheet_active_task">Текущая задача</string>
+    <string name="timesheet_history_title">История</string>
+    <string name="timesheet_task_what_done">Что сделано</string>
+    <string name="timesheet_hours_hint">Часы</string>
+    <string name="timesheet_minutes_hint">Минуты</string>
+    <string name="timesheet_add_task">Добавить задачу</string>
+    <string name="timesheet_recent_title">Последние записи</string>
     <string name="timesheet_open_history">История</string>
     <string name="timesheet_export_csv">Экспорт CSV</string>
-    <string name="timesheet_history_empty">Завершённых записей пока нет.</string>
+    <string name="timesheet_history_empty">Записей пока нет.</string>
     <string name="timesheet_row_meta">%1$s — %2$s · %3$s</string>
     <string name="timesheet_export_ok">Файл сохранён</string>
     <string name="timesheet_export_fail">Не удалось записать файл</string>
 
     <string name="timesheet_err_no_session">Нет активной сессии</string>
-    <string name="timesheet_err_empty_title">Укажите название задачи</string>
-    <string name="timesheet_err_already_running">Уже есть активный таймер — сначала нажмите «Стоп»</string>
+    <string name="timesheet_err_empty_title">Укажите, что было сделано</string>
+    <string name="timesheet_err_invalid_duration">Укажите время: часы не меньше 0, минуты от 0 до 59, суммарно больше нуля</string>
     <string name="timesheet_err_generic">Ошибка операции</string>
-    <string name="timesheet_err_stop">Не удалось остановить таймер</string>
 </resources>

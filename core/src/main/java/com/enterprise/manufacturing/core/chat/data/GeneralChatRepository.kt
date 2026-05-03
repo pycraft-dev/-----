@@ -6,13 +6,15 @@ import kotlinx.coroutines.flow.Flow
 import java.io.File
 
 interface GeneralChatRepository {
-    fun observeMessages(): Flow<List<GeneralChatMessageEntity>>
+    fun observeDirectMessages(peerUserId: Long, currentUserId: Long): Flow<List<GeneralChatMessageEntity>>
 
-    suspend fun sendText(senderUserId: Long, text: String)
+    suspend fun sendText(senderUserId: Long, recipientUserId: Long, text: String)
 
-    suspend fun sendVoiceMessage(senderUserId: Long, audioFile: File, durationMs: Long)
+    suspend fun sendVoiceMessage(senderUserId: Long, recipientUserId: Long, audioFile: File, durationMs: Long)
 
-    suspend fun sendFileMessage(senderUserId: Long, sourceUri: Uri, caption: String)
+    suspend fun sendFileMessage(senderUserId: Long, recipientUserId: Long, sourceUri: Uri, caption: String)
 
     suspend fun mergeTranscript(messageId: Long, spokenText: String)
+
+    suspend fun setTranscript(messageId: Long, text: String)
 }

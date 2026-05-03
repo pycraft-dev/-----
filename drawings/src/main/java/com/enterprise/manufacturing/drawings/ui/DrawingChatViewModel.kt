@@ -34,7 +34,9 @@ class DrawingChatViewModel @Inject constructor(
     fun send(text: String) {
         viewModelScope.launch {
             if (revisionId <= 0L) return@launch
-            val snap = authSessionRepository.observeSessionSnapshot().first()
+            val snap =
+                authSessionRepository.observeSessionSnapshot()
+                    .first { it !is SessionSnapshot.Loading }
             val active = snap as? SessionSnapshot.Active ?: return@launch
             drawingRepository.sendDrawingMessage(revisionId, active.userId, text)
         }

@@ -3,51 +3,77 @@ package com.enterprise.manufacturing.core.chat
 import android.content.Context
 import android.media.MediaPlayer
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enterprise.manufacturing.core.chat.data.GeneralChatRepository
+import com.enterprise.manufacturing.core.chat.media.VoiceMessageTranscriber
 import com.enterprise.manufacturing.core.chat.media.VoiceRecorder
 import com.enterprise.manufacturing.core.db.dao.UserDao
+import com.enterprise.manufacturing.core.db.entity.GeneralChatMessageEntity
+import com.enterprise.manufacturing.core.db.entity.UserEntity
 import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.navigation.DirectChatNavArgs
 import com.enterprise.manufacturing.core.session.AuthSessionRepository
 import com.enterprise.manufacturing.core.session.SessionSnapshot
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
-class ChatHubViewModel @Inject constructor(
-    @ApplicationContext context: Context,
+class DirectChatViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val appContext: Context,
     private val repository: GeneralChatRepository,
     private val authSessionRepository: AuthSessionRepository,
     userDao: UserDao,
 ) : ViewModel() {
 
-    private val voiceRecorder = VoiceRecorder(context)
+    private val peerUserId: Long =
+        checkNotNull(savedStateHandle.get<Long>(DirectChatNavArgs.PeerUserId))
 
-    val messages =
-        repository.observeMessages().stateIn(
+    private val voiceRecorder = VoiceRecorder(appContext)
+
+    val peerUser: StateFlow<UserEntity?> =
+        userDao.observeById(peerUserId).stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
+            initialValue = null,
         )
 
-    val users =
-        userDao.observeAll().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
+    val messages: StateFlow<List<GeneralChatMessageEntity>> =
+        authSessionRepository.observeSessionSnapshot()
+            .map { snap -> (snap as? SessionSnapshot.Active)?.userId }
+            .distinctUntilChanged()
+            .flatMapLatest { me ->
+                if (me == null) {
+                    flowOf(emptyList())
+                } else {
+                    repository.observeDirectMessages(peerUserId, me)
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
 
     val isAdmin =
         authSessionRepository.observeSessionSnapshot().map { snap ->
@@ -70,13 +96,17 @@ class ChatHubViewModel @Inject constructor(
     private val _playingMessageId = MutableStateFlow<Long?>(null)
     val playingMessageId: StateFlow<Long?> = _playingMessageId.asStateFlow()
 
+    private val _voiceTranscriptFailed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val voiceTranscriptFailed = _voiceTranscriptFailed.asSharedFlow()
+
     private var mediaPlayer: MediaPlayer? = null
 
     init {
         viewModelScope.launch {
-            val snap = authSessionRepository.observeSessionSnapshot().first()
-            val active = snap as? SessionSnapshot.Active
-            _currentUserId.value = active?.userId
+            authSessionRepository.observeSessionSnapshot().collect { snap ->
+                val active = snap as? SessionSnapshot.Active
+                _currentUserId.value = active?.userId
+            }
         }
     }
 
@@ -91,8 +121,8 @@ class ChatHubViewModel @Inject constructor(
 
     fun sendText(text: String) {
         viewModelScope.launch {
-            val uid = activeUserId() ?: return@launch
-            repository.sendText(uid, text)
+            val me = activeUserId() ?: return@launch
+            repository.sendText(me, peerUserId, text)
         }
     }
 
@@ -109,7 +139,7 @@ class ChatHubViewModel @Inject constructor(
     fun stopRecordingAndSend() {
         if (!_recording.value) return
         viewModelScope.launch(Dispatchers.IO) {
-            val uid = activeUserId() ?: run {
+            val me = activeUserId() ?: run {
                 voiceRecorder.discard()
                 _recording.value = false
                 return@launch
@@ -122,7 +152,7 @@ class ChatHubViewModel @Inject constructor(
                 file.delete()
                 return@launch
             }
-            repository.sendVoiceMessage(uid, file, dur)
+            repository.sendVoiceMessage(me, peerUserId, file, dur)
         }
     }
 
@@ -135,14 +165,32 @@ class ChatHubViewModel @Inject constructor(
 
     fun sendAttachment(uri: Uri, caption: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val uid = activeUserId() ?: return@launch
-            repository.sendFileMessage(uid, uri, caption)
+            val me = activeUserId() ?: return@launch
+            repository.sendFileMessage(me, peerUserId, uri, caption)
         }
     }
 
     fun mergeTranscriptFromSpeech(messageId: Long, spokenText: String?) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.mergeTranscript(messageId, spokenText.orEmpty())
+        }
+    }
+
+    fun transcribeVoiceMessage(messageId: Long, audioPath: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val file = File(audioPath)
+            if (!file.exists()) return@launch
+            val text =
+                VoiceMessageTranscriber.transcribe(
+                    appContext,
+                    file,
+                    Locale.forLanguageTag("ru-RU"),
+                )
+            if (!text.isNullOrBlank()) {
+                repository.setTranscript(messageId, text)
+            } else {
+                _voiceTranscriptFailed.emit(Unit)
+            }
         }
     }
 
@@ -178,7 +226,9 @@ class ChatHubViewModel @Inject constructor(
     }
 
     private suspend fun activeUserId(): Long? {
-        val snap = authSessionRepository.observeSessionSnapshot().first()
+        val snap =
+            authSessionRepository.observeSessionSnapshot()
+                .first { it !is SessionSnapshot.Loading }
         return (snap as? SessionSnapshot.Active)?.userId
     }
 

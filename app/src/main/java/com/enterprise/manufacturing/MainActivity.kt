@@ -12,7 +12,8 @@ import androidx.navigation.compose.rememberNavController
 import com.enterprise.manufacturing.admin.ui.AdminPanelRoute
 import com.enterprise.manufacturing.auth.login.LoginRoute
 import com.enterprise.manufacturing.core.navigation.EnterpriseNavHost
-import com.enterprise.manufacturing.core.navigation.ChatHubRoute
+import com.enterprise.manufacturing.core.navigation.ChatListRoute
+import com.enterprise.manufacturing.core.navigation.DirectChatRoute
 import com.enterprise.manufacturing.defect.ui.DefectCaptureRoute
 import com.enterprise.manufacturing.defect.ui.DefectChatRoute
 import com.enterprise.manufacturing.defect.ui.DefectListRoute
@@ -79,8 +80,11 @@ class MainActivity : ComponentActivity() {
                         syncContent = {
                             SyncRoute(navController = navController)
                         },
-                        chatHubContent = {
-                            ChatHubRoute(navController = navController)
+                        chatListContent = {
+                            ChatListRoute(navController = navController)
+                        },
+                        directChatContent = {
+                            DirectChatRoute(navController = navController)
                         },
                         onSignOut = { mainViewModel.signOut() },
                     )

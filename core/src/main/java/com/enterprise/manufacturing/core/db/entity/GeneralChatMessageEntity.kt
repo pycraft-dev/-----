@@ -8,11 +8,14 @@ import androidx.room.PrimaryKey
     tableName = "general_chat_messages",
     indices = [
         Index(value = ["createdAtEpochMs"]),
+        Index(value = ["senderUserId", "recipientUserId", "createdAtEpochMs"]),
     ],
 )
 data class GeneralChatMessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val senderUserId: Long,
+    /** Собеседник в личном чате: при отправке от текущего пользователя — id получателя. */
+    val recipientUserId: Long,
     /** [com.enterprise.manufacturing.core.model.TeamChatMessageType] name */
     val messageType: String,
     val body: String,

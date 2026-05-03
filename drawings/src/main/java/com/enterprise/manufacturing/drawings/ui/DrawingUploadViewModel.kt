@@ -53,7 +53,9 @@ class DrawingUploadViewModel @Inject constructor(
                 eventsChannel.send(DrawingUploadEvent.NoFile)
                 return@launch
             }
-            val snap = authSessionRepository.observeSessionSnapshot().first()
+            val snap =
+                authSessionRepository.observeSessionSnapshot()
+                    .first { it !is SessionSnapshot.Loading }
             val active = snap as? SessionSnapshot.Active
             if (active == null) {
                 eventsChannel.send(DrawingUploadEvent.NoSession)

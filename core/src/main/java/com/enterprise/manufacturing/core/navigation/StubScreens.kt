@@ -41,8 +41,8 @@ fun HomePlaceholderScreen(
     onOpenUpdate: () -> Unit,
     showSyncEntry: Boolean,
     onOpenSync: () -> Unit,
-    showChatHubEntry: Boolean,
-    onOpenChatHub: () -> Unit,
+    showMessengerEntry: Boolean,
+    onOpenMessenger: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
@@ -63,9 +63,9 @@ fun HomePlaceholderScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (showChatHubEntry) {
+            if (showMessengerEntry) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onOpenChatHub) {
+                Button(onClick = onOpenMessenger) {
                     Text(text = stringResource(R.string.core_open_general_chat))
                 }
             }

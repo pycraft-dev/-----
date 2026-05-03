@@ -20,16 +20,19 @@
     <string name="general_chat_title">Общий чат</string>
     <string name="general_chat_message_hint">Сообщение</string>
     <string name="general_chat_send">Отправить</string>
-    <string name="chat_hub_title">Чаты</string>
+    <string name="chat_list_title">Чаты</string>
+    <string name="chat_direct_fallback_title">Чат</string>
+    <string name="chat_day_today">Сегодня</string>
+    <string name="chat_day_yesterday">Вчера</string>
     <string name="chat_drawer_channels">Каналы</string>
     <string name="chat_channel_general">Общий чат</string>
     <string name="chat_drawer_sections">Разделы приложения</string>
     <string name="chat_drawer_desktop">Рабочий стол</string>
     <string name="chat_drawer_people">Сотрудники</string>
-    <string name="chat_presence_hint">Онлайн: только вы, пока открыт чат (без сервера «кто в сети» для других устройств неизвестен).</string>
+    <string name="chat_presence_hint">Онлайн у других сотрудников без сервера не виден. Зелёный индикатор — только вы, пока открыт список чатов или переписка.</string>
     <string name="chat_recording">Идёт запись…</string>
     <string name="chat_cancel_record">Отмена</string>
-    <string name="chat_add_transcript">Добавить расшифровку (голосом)</string>
-    <string name="chat_speech_prompt">Произнесите текст — он добавится к расшифровке сообщения</string>
+    <string name="chat_add_transcript">Расшифровать голосовое (→T)</string>
+    <string name="chat_transcript_failed">Не удалось распознать голосовое на устройстве. Нужны сервисы Google и Android 13+.</string>
     <string name="chat_attachment_missing">Вложение отсутствует на устройстве</string>
 </resources>
