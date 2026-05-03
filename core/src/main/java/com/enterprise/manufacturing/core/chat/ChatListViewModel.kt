@@ -30,25 +30,25 @@ class ChatListViewModel @Inject constructor(
         )
 
     val currentUserId: StateFlow<Long?> =
-        authSessionRepository.observeSessionSnapshot().map { snap ->
-            (snap as? SessionSnapshot.Active)?.userId
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = null,
-        )
+        authSessionRepository.observeSessionSnapshot()
+            .map { snap -> chatListSessionUserIdOrNull(snap) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = null,
+            )
 
-    val isAdmin =
-        authSessionRepository.observeSessionSnapshot().map { snap ->
-            (snap as? SessionSnapshot.Active)?.role == UserRole.ADMIN
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = false,
-        )
+    val isAdmin: StateFlow<Boolean> =
+        authSessionRepository.observeSessionSnapshot()
+            .map { snap -> chatListSessionIsAdmin(snap) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = false,
+            )
 
-    private val _screenVisible = MutableStateFlow(false)
-    val screenVisible = _screenVisible.asStateFlow()
+    private val _screenVisible: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val screenVisible: StateFlow<Boolean> = _screenVisible.asStateFlow()
 
     fun setScreenVisible(visible: Boolean) {
         _screenVisible.value = visible
@@ -59,3 +59,15 @@ class ChatListViewModel @Inject constructor(
         return userId == self && _screenVisible.value
     }
 }
+
+private fun chatListSessionUserIdOrNull(snap: SessionSnapshot): Long? =
+    when (snap) {
+        is SessionSnapshot.Active -> snap.userId
+        else -> null
+    }
+
+private fun chatListSessionIsAdmin(snap: SessionSnapshot): Boolean =
+    when (snap) {
+        is SessionSnapshot.Active -> snap.role == UserRole.ADMIN
+        else -> false
+    }

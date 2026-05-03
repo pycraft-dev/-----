@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt.android)
@@ -10,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.enterprise.manufacturing.core"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26
@@ -35,9 +36,6 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
 }
 
 dependencies {
@@ -50,6 +48,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation("androidx.compose.material:material-icons-extended")
 
@@ -65,6 +64,7 @@ dependencies {
     kapt(libs.room.compiler)
 
     implementation(platform("io.github.jan-tennert.supabase:bom:3.4.1"))
+    implementation(platform(libs.ktor.bom))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation(libs.ktor.client.android)
+    implementation("io.ktor:ktor-client-android")
 }

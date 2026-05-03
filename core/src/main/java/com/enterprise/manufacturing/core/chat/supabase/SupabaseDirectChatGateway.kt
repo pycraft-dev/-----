@@ -4,6 +4,7 @@ import com.enterprise.manufacturing.core.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.serializer.KotlinXSerializer
 import kotlinx.serialization.json.Json
@@ -41,7 +42,7 @@ class SupabaseDirectChatGateway @Inject constructor() {
 
     suspend fun insertText(row: DirectMessageInsert): DirectMessageRemoteRow {
         val c = clientOrNull() ?: error("Supabase не настроен")
-        return c.postgrest["direct_messages"].insert(row) {
+        return c.from("direct_messages").insert(row) {
             select()
         }.decodeSingle<DirectMessageRemoteRow>()
     }
@@ -52,7 +53,7 @@ class SupabaseDirectChatGateway @Inject constructor() {
         limit: Long = QUERY_LIMIT,
     ): List<DirectMessageRemoteRow> {
         val c = clientOrNull() ?: return emptyList()
-        return c.postgrest["direct_messages"].select {
+        return c.from("direct_messages").select {
             filter {
                 eq("conversation_key", conversationKey)
             }
