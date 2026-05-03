@@ -8,7 +8,7 @@
 В проекте уже настроено:
 
 - подпись **release** из секретов CI **или** из файла `keystore.properties` локально;
-- workflow **`.github/workflows/release-bundle.yml`** — сборка **AAB** и выкладка артефакта в GitHub Actions.
+- workflow **`.github/workflows/release-bundle.yml`** — сборка **AAB** и **APK** и выкладка артефактов в GitHub Actions.
 
 ---
 
@@ -119,7 +119,7 @@ base64 upload-keystore.jks       # macOS (без -w0)
 ### Шаг C1. Ручной запуск
 
 1. Репозиторий → вкладка **Actions**.
-2. Слева выберите workflow **«Release AAB»**.
+2. Слева выберите workflow **«Release AAB + APK»**.
 3. **Run workflow** → ветка **main** → **Run workflow**.
 
 ### Шаг C2. Запуск по тегу (удобно для версий)
@@ -135,7 +135,10 @@ Workflow сработает на push тега вида **`v*`** (наприме
 
 ### Шаг C3. Скачать AAB
 
-Когда workflow **зелёный** → откройте запуск → внизу раздел **Artifacts** → скачайте **`manufacturing-enterprise-aab`**. Внутри архива — **`.aab`** для загрузки в Play Console.
+Когда workflow **зелёный** → откройте запуск → внизу раздел **Artifacts**:
+
+- **`manufacturing-enterprise-aab`** — **`.aab`** для Play Console / некоторых MDM.
+- **`manufacturing-enterprise-apk`** — **`.apk`** для прямой установки на телефон и для ссылок в **`update.json`** (самообновление без магазина).
 
 Если сборка **красная** — откройте лог шага **«Сборка bundleRelease»**; частые причины: не заданы секреты, неверный пароль/alias, не увеличен `versionCode` относительно уже загруженного в Play.
 
@@ -179,7 +182,7 @@ Workflow сработает на push тега вида **`v*`** (наприме
 ## Чеклист перед первым «боевым» релизом
 
 - [ ] `versionCode` в `app/build.gradle.kts` больше, чем у уже опубликованной версии в Play.
-- [ ] Секреты в GitHub заданы, workflow **Release AAB** проходит зелёным.
+- [ ] Секреты в GitHub заданы, workflow **Release AAB + APK** проходит зелёным.
 - [ ] AAB проверен на тестовом треке Play перед массовым назначением в MDM.
 - [ ] Сотрудникам выданы **рабочие** логины/пароли (экран администратора в приложении или отдельная политика компании), тестовый `admin_1` / `admin123` только для пустой базы.
 

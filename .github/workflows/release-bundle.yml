@@ -1,5 +1,5 @@
-# Сборка подписанного AAB для Google Play / MDM (см. docs/КОРПОРАТИВНЫЙ_РЕЛИЗ_CI.md)
-name: Release AAB
+# Сборка подписанного AAB + APK (см. docs/КОРПОРАТИВНЫЙ_РЕЛИЗ_CI.md)
+name: Release AAB + APK
 
 on:
   workflow_dispatch:
@@ -44,16 +44,22 @@ jobs:
           fi
           echo "$B64" | base64 -d > release-keystore.jks
 
-      - name: Сборка bundleRelease
+      - name: Сборка bundleRelease + assembleRelease
         env:
           ANDROID_KEYSTORE_PATH: release-keystore.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon bundleRelease
+        run: ./gradlew --no-daemon bundleRelease assembleRelease
 
       - name: Артефакт AAB
         uses: actions/upload-artifact@v4
         with:
           name: manufacturing-enterprise-aab
           path: app/build/outputs/bundle/release/*.aab
+
+      - name: Артефакт APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: manufacturing-enterprise-apk
+          path: app/build/outputs/apk/release/*.apk
