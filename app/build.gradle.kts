@@ -53,9 +53,12 @@ android {
         versionName = "1.0.0"
     }
 
-    val envStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+    fun envSigningVar(name: String): String? =
+        System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+    val envStorePath = envSigningVar("ANDROID_KEYSTORE_PATH")
     val useEnvSigning =
-        !envStorePath.isNullOrBlank() && rootProject.file(envStorePath).isFile
+        envStorePath != null && rootProject.file(envStorePath).isFile
     val keystorePropsFile = rootProject.file("keystore.properties")
     val useFileSigning = !useEnvSigning && keystorePropsFile.isFile
     val releaseSigningConfigured = useEnvSigning || useFileSigning
@@ -67,13 +70,13 @@ android {
                     val f = rootProject.file(envStorePath!!)
                     storeFile = f
                     storePassword =
-                        System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                        envSigningVar("ANDROID_KEYSTORE_PASSWORD")
                             ?: error("Задайте ANDROID_KEYSTORE_PASSWORD для CI")
                     keyAlias =
-                        System.getenv("ANDROID_KEY_ALIAS")
+                        envSigningVar("ANDROID_KEY_ALIAS")
                             ?: error("Задайте ANDROID_KEY_ALIAS для CI")
                     keyPassword =
-                        System.getenv("ANDROID_KEY_PASSWORD")
+                        envSigningVar("ANDROID_KEY_PASSWORD")
                             ?: error("Задайте ANDROID_KEY_PASSWORD для CI")
                 } else {
                     fun readPropsText(): String {
