@@ -1,7 +1,5 @@
 package com.enterprise.manufacturing.core.session
 
-import com.enterprise.manufacturing.core.model.UserRole
-
 /**
  * Состояние восстановления сессии при старте и после выхода.
  * Пока данные из DataStore не прочитаны — [Loading].
@@ -15,6 +13,7 @@ sealed interface SessionSnapshot {
         val userId: Long,
         val login: String,
         val fullName: String,
-        val role: UserRole,
+        /** Код роли из таблицы [com.enterprise.manufacturing.core.db.entity.RoleDefinitionEntity]. */
+        val roleCode: String,
     ) : SessionSnapshot
 }

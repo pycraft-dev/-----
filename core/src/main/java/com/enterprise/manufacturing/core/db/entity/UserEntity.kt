@@ -20,6 +20,6 @@ data class UserEntity(
     val position: String,
     /** Ключ группы для генерации логинов (рабочий, конструктор, …). */
     val groupKey: String,
-    /** Сериализованное имя [com.enterprise.manufacturing.core.model.UserRole]. */
+    /** Код роли из [com.enterprise.manufacturing.core.db.entity.RoleDefinitionEntity.code]. */
     val role: String,
 )

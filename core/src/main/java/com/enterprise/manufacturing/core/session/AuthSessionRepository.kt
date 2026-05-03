@@ -1,6 +1,5 @@
 package com.enterprise.manufacturing.core.session
 
-import com.enterprise.manufacturing.core.model.UserRole
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -10,7 +9,8 @@ import kotlinx.coroutines.flow.Flow
 interface AuthSessionRepository {
     fun observeSessionSnapshot(): Flow<SessionSnapshot>
 
-    fun observeSessionRole(): Flow<UserRole?>
+    /** Код активной роли из [com.enterprise.manufacturing.core.db.entity.RoleDefinitionEntity.code] или null. */
+    fun observeSessionRole(): Flow<String?>
 
     suspend fun signIn(login: String, password: String): Result<Unit>
 

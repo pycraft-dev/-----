@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enterprise.manufacturing.core.db.entity.DrawingRevisionEntity
 import com.enterprise.manufacturing.core.model.DrawingStatus
-import com.enterprise.manufacturing.core.model.UserRole
 import com.enterprise.manufacturing.core.session.AuthSessionRepository
 import com.enterprise.manufacturing.core.session.SessionSnapshot
 import com.enterprise.manufacturing.drawings.data.DrawingRepository
@@ -47,9 +46,9 @@ class DrawingDetailViewModel @Inject constructor(
             initialValue = emptyList(),
         )
 
-    val role: StateFlow<UserRole?> =
+    val roleCode: StateFlow<String?> =
         authSessionRepository.observeSessionSnapshot().map { snap ->
-            (snap as? SessionSnapshot.Active)?.role
+            (snap as? SessionSnapshot.Active)?.roleCode
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

@@ -1,6 +1,6 @@
 package com.enterprise.manufacturing.core.navigation
 
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 
 /**
  * Корневые маршруты приложения. Вложенные графы фич добавятся с модулями :defect, :timesheet и т.д.
@@ -18,7 +18,7 @@ sealed class AppRoute(val route: String) {
 
     data object DefectNew : AppRoute("defect_new")
 
-    /** Доступен только при [UserRole.ADMIN] через [RoleGuardedRoute]. */
+    /** Доступен только для кода роли [BuiltInRoleCodes.ADMIN] через [RoleGuardedRoute]. */
     data object Admin : AppRoute("admin")
 
     /** Чертежи и документация (`:drawings`). */
@@ -76,4 +76,4 @@ object DefectNavArgs {
  * Стабильная ссылка на набор ролей для `LaunchedEffect` в [RoleGuardedRoute]
  * (не создавать новый `setOf` на каждой рекомпозиции NavHost).
  */
-val AdminDestinationRoles: Set<UserRole> = setOf(UserRole.ADMIN)
+val AdminDestinationRoles: Set<String> = setOf(BuiltInRoleCodes.ADMIN)

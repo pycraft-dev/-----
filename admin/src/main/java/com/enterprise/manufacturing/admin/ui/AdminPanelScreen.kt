@@ -8,10 +8,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -23,9 +28,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,8 +48,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.enterprise.manufacturing.admin.R
+import com.enterprise.manufacturing.core.db.entity.RoleDefinitionEntity
 import com.enterprise.manufacturing.core.db.entity.UserEntity
-import com.enterprise.manufacturing.core.model.UserRole
 
 @Composable
 fun AdminPanelRoute(
@@ -49,18 +57,21 @@ fun AdminPanelRoute(
     viewModel: AdminViewModel = hiltViewModel(),
 ) {
     val users by viewModel.users.collectAsStateWithLifecycle()
+    val roles by viewModel.roles.collectAsStateWithLifecycle()
     val form by viewModel.form.collectAsStateWithLifecycle()
 
     AdminPanelScreen(
         users = users,
+        roles = roles,
         state = form,
         onBack = { navController.popBackStack() },
         onFullNameChange = viewModel::onFullNameChange,
         onPositionChange = viewModel::onPositionChange,
-        onGroupKeyChange = viewModel::onGroupKeyChange,
-        onRoleChange = viewModel::onRoleChange,
+        onRoleCodeChange = viewModel::onRoleCodeChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
+        onAddRole = viewModel::addCustomRole,
+        onClearAddRoleMessage = viewModel::clearAddRoleMessage,
     )
 }
 
@@ -68,16 +79,19 @@ fun AdminPanelRoute(
 @Composable
 fun AdminPanelScreen(
     users: List<UserEntity>,
+    roles: List<RoleDefinitionEntity>,
     state: AdminUiState,
     onBack: () -> Unit,
     onFullNameChange: (String) -> Unit,
     onPositionChange: (String) -> Unit,
-    onGroupKeyChange: (String) -> Unit,
-    onRoleChange: (UserRole) -> Unit,
+    onRoleCodeChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onAddRole: (String, String) -> Unit,
+    onClearAddRoleMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showAddRole by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -95,12 +109,66 @@ fun AdminPanelScreen(
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item {
+                Text(
+                    text = stringResource(R.string.admin_section_roles_dictionary),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        if (roles.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.admin_roles_loading_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            roles.take(40).forEach { r ->
+                                Text(
+                                    text = "${r.label} · ${r.code}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                showAddRole = true
+                                onClearAddRoleMessage()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Add, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.admin_action_add_role))
+                            }
+                        }
+                        state.addRoleMessage?.let { msg ->
+                            Text(
+                                text = msg,
+                                color =
+                                    MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     text = stringResource(R.string.admin_section_create),
@@ -108,11 +176,11 @@ fun AdminPanelScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 CreateUserForm(
+                    roles = roles,
                     state = state,
                     onFullNameChange = onFullNameChange,
                     onPositionChange = onPositionChange,
-                    onGroupKeyChange = onGroupKeyChange,
-                    onRoleChange = onRoleChange,
+                    onRoleCodeChange = onRoleCodeChange,
                     onPasswordChange = onPasswordChange,
                     onSubmit = onSubmit,
                 )
@@ -137,25 +205,145 @@ fun AdminPanelScreen(
                 }
             } else {
                 items(users, key = { it.id }) { user ->
-                    UserCard(user)
+                    val rl = roles.find { it.code == user.role }?.label
+                    UserCard(user, roleDisplayLabel = rl)
                 }
             }
         }
+
+        if (showAddRole) {
+            AddRoleDialog(
+                onDismiss = { showAddRole = false },
+                onConfirm = { code, label ->
+                    onAddRole(code, label)
+                    showAddRole = false
+                },
+            )
+        }
     }
+}
+
+@Composable
+private fun AddRoleDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit,
+) {
+    var code by remember { mutableStateOf("") }
+    var label by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.admin_dialog_role_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = code,
+                    onValueChange = { code = it.uppercase() },
+                    label = { Text(stringResource(R.string.admin_dialog_role_code)) },
+                    placeholder = { Text(stringResource(R.string.admin_dialog_role_code_hint)) },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text(stringResource(R.string.admin_dialog_role_label)) },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(code, label) },
+                enabled = code.isNotBlank() && label.isNotBlank(),
+            ) {
+                Text(stringResource(R.string.admin_dialog_role_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CreateUserForm(
+    roles: List<RoleDefinitionEntity>,
     state: AdminUiState,
     onFullNameChange: (String) -> Unit,
     onPositionChange: (String) -> Unit,
-    onGroupKeyChange: (String) -> Unit,
-    onRoleChange: (UserRole) -> Unit,
+    onRoleCodeChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.admin_section_role_login),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+
+                val selectedRole = roles.firstOrNull { it.code == state.selectedRoleCode }
+                var expanded by remember { mutableStateOf(false) }
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        readOnly = true,
+                        value = selectedRole?.label ?: state.selectedRoleCode,
+                        onValueChange = {},
+                        label = { Text(stringResource(R.string.admin_field_role)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        enabled = !state.isSaving,
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        roles.forEach { role ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(role.label)
+                                        Text(
+                                            role.code,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.outline,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onRoleCodeChange(role.code)
+                                    expanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = stringResource(R.string.admin_next_login_preview, state.nextLoginPreview),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
         OutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
             value = state.fullName,
@@ -172,47 +360,6 @@ private fun CreateUserForm(
             singleLine = true,
             enabled = !state.isSaving,
         )
-        OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = state.groupKey,
-            onValueChange = onGroupKeyChange,
-            label = { Text(stringResource(R.string.admin_field_group)) },
-            placeholder = { Text(stringResource(R.string.admin_field_group_hint)) },
-            singleLine = true,
-            enabled = !state.isSaving,
-        )
-
-        var expanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-        ) {
-            OutlinedTextField(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                readOnly = true,
-                value = stringResource(roleLabel(state.selectedRole)),
-                onValueChange = {},
-                label = { Text(stringResource(R.string.admin_field_role)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                enabled = !state.isSaving,
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-            ) {
-                UserRole.entries.forEach { role ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(roleLabel(role))) },
-                        onClick = {
-                            onRoleChange(role)
-                            expanded = false
-                        },
-                    )
-                }
-            }
-        }
 
         OutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -226,7 +373,7 @@ private fun CreateUserForm(
 
         Button(
             onClick = onSubmit,
-            enabled = !state.isSaving,
+            enabled = !state.isSaving && roles.any { it.code == state.selectedRoleCode },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = stringResource(R.string.admin_action_create))
@@ -251,8 +398,7 @@ private fun CreateUserForm(
 }
 
 @Composable
-private fun UserCard(user: UserEntity) {
-    val role = parseRole(user.role)
+private fun UserCard(user: UserEntity, roleDisplayLabel: String?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -269,22 +415,12 @@ private fun UserCard(user: UserEntity) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = stringResource(R.string.admin_row_login, user.login))
-            Text(text = stringResource(R.string.admin_row_group, user.groupKey))
+            Text(text = stringResource(R.string.admin_row_group, roleDisplayLabel ?: user.groupKey))
             Text(
-                text = stringResource(roleLabel(role)),
+                text = user.role + (roleDisplayLabel?.let { " — $it" } ?: ""),
                 style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
         }
     }
-}
-
-private fun parseRole(raw: String): UserRole =
-    runCatching { UserRole.valueOf(raw) }.getOrElse { UserRole.WORKER }
-
-@Composable
-private fun roleLabel(role: UserRole): Int = when (role) {
-    UserRole.ADMIN -> R.string.admin_role_admin
-    UserRole.CONSTRUCTOR -> R.string.admin_role_constructor
-    UserRole.WORKER -> R.string.admin_role_worker
-    UserRole.MASTER -> R.string.admin_role_master
 }

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.enterprise.manufacturing.core.db.dao.UserDao
 import com.enterprise.manufacturing.core.db.entity.UserEntity
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 import com.enterprise.manufacturing.core.session.AuthSessionRepository
 import com.enterprise.manufacturing.core.session.SessionSnapshot
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -68,6 +68,6 @@ private fun chatListSessionUserIdOrNull(snap: SessionSnapshot): Long? =
 
 private fun chatListSessionIsAdmin(snap: SessionSnapshot): Boolean =
     when (snap) {
-        is SessionSnapshot.Active -> snap.role == UserRole.ADMIN
+        is SessionSnapshot.Active -> snap.roleCode == BuiltInRoleCodes.ADMIN
         else -> false
     }

@@ -12,31 +12,37 @@ import com.enterprise.manufacturing.core.chat.media.VoiceRecorder
 import com.enterprise.manufacturing.core.db.dao.UserDao
 import com.enterprise.manufacturing.core.db.entity.GeneralChatMessageEntity
 import com.enterprise.manufacturing.core.db.entity.UserEntity
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 import com.enterprise.manufacturing.core.navigation.DirectChatNavArgs
 import com.enterprise.manufacturing.core.session.AuthSessionRepository
 import com.enterprise.manufacturing.core.session.SessionSnapshot
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.Locale
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class DirectChatViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -54,6 +60,26 @@ class DirectChatViewModel @Inject constructor(
 
     private val voiceRecorder = VoiceRecorder(appContext)
 
+    /**
+     * Id текущего пользователя из сессии. [SharingStarted.Eagerly], чтобы при открытии чата сразу
+     * подписаться на Room и не зависеть от короткой подписки UI.
+     */
+    private val _currentUserId: StateFlow<Long?> =
+        authSessionRepository.observeSessionSnapshot()
+            .map { snap ->
+                when (snap) {
+                    is SessionSnapshot.Active -> snap.userId
+                    else -> null
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = null,
+            )
+
+    val currentUserId: StateFlow<Long?> = _currentUserId
+
     val peerUser: StateFlow<UserEntity?> =
         userDao.observeById(peerUserId).stateIn(
             scope = viewModelScope,
@@ -61,34 +87,40 @@ class DirectChatViewModel @Inject constructor(
             initialValue = null,
         )
 
-    val messages: StateFlow<List<GeneralChatMessageEntity>> =
-        authSessionRepository.observeSessionSnapshot()
-            .map { snap -> (snap as? SessionSnapshot.Active)?.userId }
-            .distinctUntilChanged()
+    /**
+     * [shareIn], а не [stateIn]: для списков [StateFlow] может не эмитить при `equals` к предыдущему
+     * снимку; Room при этом уже обновил таблицу — сообщение «пропадает» до перезахода.
+     * Ветка `me == null` не завершается ([awaitCancellation]), иначе [flatMapLatest] теряет активный inner.
+     */
+    val messages: SharedFlow<List<GeneralChatMessageEntity>> =
+        _currentUserId
             .flatMapLatest { me ->
                 if (me == null) {
-                    flowOf(emptyList())
+                    flow {
+                        emit(emptyList())
+                        awaitCancellation()
+                    }
                 } else {
                     repository.observeDirectMessages(peerUserId, me)
                 }
             }
-            .stateIn(
+            .shareIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = emptyList(),
+                started = SharingStarted.Eagerly,
+                replay = 1,
             )
 
     val isAdmin =
         authSessionRepository.observeSessionSnapshot().map { snap ->
-            (snap as? SessionSnapshot.Active)?.role == UserRole.ADMIN
+            when (snap) {
+                is SessionSnapshot.Active -> snap.roleCode == BuiltInRoleCodes.ADMIN
+                else -> false
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = false,
         )
-
-    private val _currentUserId = MutableStateFlow<Long?>(null)
-    val currentUserId: StateFlow<Long?> = _currentUserId.asStateFlow()
 
     private val _chatScreenVisible = MutableStateFlow(false)
     val chatScreenVisible: StateFlow<Boolean> = _chatScreenVisible.asStateFlow()
@@ -104,15 +136,6 @@ class DirectChatViewModel @Inject constructor(
 
     private var mediaPlayer: MediaPlayer? = null
 
-    init {
-        viewModelScope.launch {
-            authSessionRepository.observeSessionSnapshot().collect { snap ->
-                val active = snap as? SessionSnapshot.Active
-                _currentUserId.value = active?.userId
-            }
-        }
-    }
-
     fun setChatScreenVisible(visible: Boolean) {
         _chatScreenVisible.value = visible
     }
@@ -122,10 +145,22 @@ class DirectChatViewModel @Inject constructor(
         return userId == self && _chatScreenVisible.value
     }
 
+    /**
+     * Тот же id, что и у [messages]: ждём [currentUserId] из сессии, без второго независимого
+     * collect на [observeSessionSnapshot] (из‑за него сообщение могло уйти в Room, а список в UI оставался пустым).
+     */
+    private suspend fun senderUserIdOrThrow(): Long {
+        _currentUserId.value?.let { return it }
+        return withTimeoutOrNull(15_000L) { _currentUserId.filterNotNull().first() }
+            ?: error("no active session")
+    }
+
     fun sendText(text: String) {
         viewModelScope.launch {
-            val me = activeUserId() ?: return@launch
-            repository.sendText(me, peerUserId, text)
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) return@launch
+            val me = runCatching { senderUserIdOrThrow() }.getOrElse { return@launch }
+            repository.sendText(me, peerUserId, trimmed)
         }
     }
 
@@ -142,11 +177,12 @@ class DirectChatViewModel @Inject constructor(
     fun stopRecordingAndSend() {
         if (!_recording.value) return
         viewModelScope.launch(Dispatchers.IO) {
-            val me = activeUserId() ?: run {
-                voiceRecorder.discard()
-                _recording.value = false
-                return@launch
-            }
+            val me =
+                runCatching { senderUserIdOrThrow() }.getOrElse {
+                    voiceRecorder.discard()
+                    _recording.value = false
+                    return@launch
+                }
             val pair = voiceRecorder.stop()
             _recording.value = false
             if (pair == null) return@launch
@@ -168,7 +204,7 @@ class DirectChatViewModel @Inject constructor(
 
     fun sendAttachment(uri: Uri, caption: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val me = activeUserId() ?: return@launch
+            val me = runCatching { senderUserIdOrThrow() }.getOrElse { return@launch }
             repository.sendFileMessage(me, peerUserId, uri, caption)
         }
     }
@@ -226,13 +262,6 @@ class DirectChatViewModel @Inject constructor(
         mediaPlayer?.release()
         mediaPlayer = null
         _playingMessageId.value = null
-    }
-
-    private suspend fun activeUserId(): Long? {
-        val snap =
-            authSessionRepository.observeSessionSnapshot()
-                .first { it !is SessionSnapshot.Loading }
-        return (snap as? SessionSnapshot.Active)?.userId
     }
 
     override fun onCleared() {

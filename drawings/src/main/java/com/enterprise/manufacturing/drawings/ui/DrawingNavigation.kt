@@ -55,7 +55,7 @@ import androidx.navigation.NavHostController
 import com.enterprise.manufacturing.core.db.entity.DrawingMessageEntity
 import com.enterprise.manufacturing.core.db.entity.DrawingRevisionEntity
 import com.enterprise.manufacturing.core.model.DrawingStatus
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 import com.enterprise.manufacturing.core.navigation.AppRoute
 import com.enterprise.manufacturing.core.navigation.DrawingNavArgs
 import com.enterprise.manufacturing.drawings.R
@@ -380,10 +380,10 @@ fun DrawingDetailRoute(navController: NavHostController) {
     val viewModel: DrawingDetailViewModel = hiltViewModel()
     val revision by viewModel.revision.collectAsStateWithLifecycle()
     val seriesRevisions by viewModel.seriesRevisions.collectAsStateWithLifecycle()
-    val role by viewModel.role.collectAsStateWithLifecycle()
+    val roleCode by viewModel.roleCode.collectAsStateWithLifecycle()
 
     val canManage =
-        role == UserRole.ADMIN || role == UserRole.CONSTRUCTOR
+        roleCode == BuiltInRoleCodes.ADMIN || roleCode == BuiltInRoleCodes.CONSTRUCTOR
 
     DrawingDetailScreen(
         revision = revision,

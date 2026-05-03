@@ -143,7 +143,7 @@ private fun buildTimeline(
 @Composable
 fun DirectChatRoute(navController: NavHostController) {
     val viewModel: DirectChatViewModel = hiltViewModel()
-    val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val messages by viewModel.messages.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val peerUser by viewModel.peerUser.collectAsStateWithLifecycle()
     val currentUserId by viewModel.currentUserId.collectAsStateWithLifecycle()
@@ -556,7 +556,7 @@ private fun DirectChatScreen(
                     timeline,
                     key = { index, entry ->
                         when (entry) {
-                            is TimelineEntry.DayChip -> "chip_$index"
+                            is TimelineEntry.DayChip -> "day_${entry.text}_$index"
                             is TimelineEntry.MessageRow -> "msg_${entry.msg.id}"
                         }
                     },

@@ -42,9 +42,11 @@ class SupabaseDirectChatGateway @Inject constructor() {
 
     suspend fun insertText(row: DirectMessageInsert): DirectMessageRemoteRow {
         val c = clientOrNull() ?: error("Supabase не настроен")
-        return c.from("direct_messages").insert(row) {
-            select()
-        }.decodeSingle<DirectMessageRemoteRow>()
+        val rows =
+            c.from("direct_messages").insert(row) {
+                select()
+            }.decodeList<DirectMessageRemoteRow>()
+        return rows.singleOrNull() ?: error("Supabase вернул пустой ответ после insert")
     }
 
     /** Последние сообщения в диалоге (от старых к новым). */

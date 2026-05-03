@@ -7,9 +7,11 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.enterprise.manufacturing.auth.datastore.authSessionDataStore
 import com.enterprise.manufacturing.auth.security.PasswordHasher
+import com.enterprise.manufacturing.core.data.RolesRepository
+import com.enterprise.manufacturing.core.db.dao.RoleDao
 import com.enterprise.manufacturing.core.db.dao.UserDao
 import com.enterprise.manufacturing.core.db.entity.UserEntity
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 import com.enterprise.manufacturing.core.session.AuthSessionRepository
 import com.enterprise.manufacturing.core.session.SessionSnapshot
 import com.enterprise.manufacturing.core.utils.DispatchersProvider
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,6 +38,8 @@ import javax.inject.Singleton
 class AuthSessionRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userDao: UserDao,
+    private val roleDao: RoleDao,
+    private val rolesRepository: RolesRepository,
     private val passwordHasher: PasswordHasher,
     private val dispatchers: DispatchersProvider,
 ) : AuthSessionRepository {
@@ -44,6 +49,7 @@ class AuthSessionRepositoryImpl @Inject constructor(
 
     init {
         scope.launch {
+            rolesRepository.seedBuiltinRolesIfEmpty()
             seedDevAdminIfNeeded()
         }
     }
@@ -52,14 +58,18 @@ class AuthSessionRepositoryImpl @Inject constructor(
         flow {
             emit(SessionSnapshot.Loading)
             dataStore.data.collect { prefs ->
-                emit(mapPrefs(prefs))
+                val snap =
+                    withContext(dispatchers.io) {
+                        computeSessionFromPrefsAndRoom(prefs)
+                    }
+                emit(snap)
             }
         }.distinctUntilChanged()
 
-    override fun observeSessionRole(): Flow<UserRole?> =
+    override fun observeSessionRole(): Flow<String?> =
         observeSessionSnapshot().map { snap ->
             when (snap) {
-                is SessionSnapshot.Active -> snap.role
+                is SessionSnapshot.Active -> snap.roleCode
                 else -> null
             }
         }.distinctUntilChanged()
@@ -79,15 +89,15 @@ class AuthSessionRepositoryImpl @Inject constructor(
                 return@withContext Result.failure(IllegalStateException("bad password"))
             }
 
-            val role = parseRole(user.role) ?: return@withContext Result.failure(
-                IllegalStateException("bad role"),
-            )
+            val roleCode = normalizedRole(user.role)
+            roleDao.getByCode(roleCode)
+                ?: return@withContext Result.failure(IllegalStateException("bad role"))
 
             dataStore.edit { prefs ->
                 prefs[KEY_USER_ID] = user.id
                 prefs[KEY_LOGIN] = user.login
                 prefs[KEY_FULL_NAME] = user.fullName
-                prefs[KEY_ROLE] = role.name
+                prefs[KEY_ROLE] = roleCode
             }
             Result.success(Unit)
         }
@@ -98,17 +108,80 @@ class AuthSessionRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun mapPrefs(prefs: Preferences): SessionSnapshot {
+    private suspend fun computeSessionFromPrefsAndRoom(prefs: Preferences): SessionSnapshot {
+        val cached = activeSnapshotFromPrefsOnlyOrLoggedOut(prefs)
+        val activePrefs = cached as? SessionSnapshot.Active ?: return cached
+
+        val rowById = userDao.getById(activePrefs.userId)
+        val row =
+            rowById
+                ?: userDao.getByLogin(activePrefs.login.trim()).takeUnless {
+                    activePrefs.login.isBlank()
+                }
+
+        if (row == null) {
+            if (prefs[KEY_USER_ID] != null) {
+                scheduleDatastoreClear()
+            }
+            return SessionSnapshot.LoggedOut
+        }
+
+        val roleCodeRow = normalizedRole(row.role)
+        if (roleDao.getByCode(roleCodeRow) == null) {
+            scheduleDatastoreClear()
+            return SessionSnapshot.LoggedOut
+        }
+
+        if (datastoreNeedsRepair(row, prefs, roleCodeRow)) {
+            scheduleDatastoreUserPatch(row, roleCodeRow)
+        }
+
+        return SessionSnapshot.Active(
+            userId = row.id,
+            login = row.login,
+            fullName = row.fullName,
+            roleCode = roleCodeRow,
+        )
+    }
+
+    private fun datastoreNeedsRepair(row: UserEntity, prefs: Preferences, normalizedRoleCode: String): Boolean {
+        val fullNameStored = prefs[KEY_FULL_NAME].orEmpty().trimEnd()
+        val fullNameRoom = row.fullName.trimEnd()
+        return prefs[KEY_USER_ID] != row.id ||
+            prefs[KEY_LOGIN] != row.login ||
+            fullNameStored != fullNameRoom ||
+            prefs[KEY_ROLE] != normalizedRoleCode
+    }
+
+    private fun scheduleDatastoreClear() {
+        scope.launch {
+            dataStore.edit { it.clear() }
+        }
+    }
+
+    private fun scheduleDatastoreUserPatch(row: UserEntity, roleCode: String) {
+        scope.launch {
+            dataStore.edit { prefsOut ->
+                prefsOut[KEY_USER_ID] = row.id
+                prefsOut[KEY_LOGIN] = row.login
+                prefsOut[KEY_FULL_NAME] = row.fullName
+                prefsOut[KEY_ROLE] = roleCode
+            }
+        }
+    }
+
+    private suspend fun activeSnapshotFromPrefsOnlyOrLoggedOut(prefs: Preferences): SessionSnapshot {
         val userId = prefs[KEY_USER_ID] ?: return SessionSnapshot.LoggedOut
         val login = prefs[KEY_LOGIN] ?: return SessionSnapshot.LoggedOut
         val fullName = prefs[KEY_FULL_NAME].orEmpty()
-        val roleName = prefs[KEY_ROLE] ?: return SessionSnapshot.LoggedOut
-        val role = parseRole(roleName) ?: return SessionSnapshot.LoggedOut
+        val roleCodeRaw = prefs[KEY_ROLE] ?: return SessionSnapshot.LoggedOut
+        val roleCode = normalizedRole(roleCodeRaw)
+        if (roleDao.getByCode(roleCode) == null) return SessionSnapshot.LoggedOut
         return SessionSnapshot.Active(
             userId = userId,
             login = login,
             fullName = fullName,
-            role = role,
+            roleCode = roleCode,
         )
     }
 
@@ -122,14 +195,14 @@ class AuthSessionRepositoryImpl @Inject constructor(
                 passwordHash = hash,
                 fullName = "Локальный администратор",
                 position = "Администратор",
-                groupKey = "admin",
-                role = UserRole.ADMIN.name,
+                groupKey = BuiltInRoleCodes.ADMIN,
+                role = BuiltInRoleCodes.ADMIN,
             ),
         )
     }
 
-    private fun parseRole(raw: String): UserRole? =
-        runCatching { UserRole.valueOf(raw) }.getOrNull()
+    private fun normalizedRole(raw: String): String =
+        raw.trim().uppercase(Locale.US)
 
     private companion object {
         val KEY_USER_ID = longPreferencesKey("session_user_id")

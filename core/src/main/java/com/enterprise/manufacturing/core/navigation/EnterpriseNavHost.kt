@@ -14,7 +14,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 import com.enterprise.manufacturing.core.session.SessionSnapshot
 import kotlinx.coroutines.flow.StateFlow
 
@@ -60,8 +60,8 @@ fun EnterpriseNavHost(
     onSignOut: () -> Unit,
 ) {
     val snapshot by sessionSnapshot.collectAsStateWithLifecycle()
-    val userRole: UserRole? = when (val s = snapshot) {
-        is SessionSnapshot.Active -> s.role
+    val sessionRoleCode: String? = when (val s = snapshot) {
+        is SessionSnapshot.Active -> s.roleCode
         else -> null
     }
     val showDefectEntry = snapshot is SessionSnapshot.Active
@@ -132,7 +132,7 @@ fun EnterpriseNavHost(
         composable(route = AppRoute.Home.route) {
             HomePlaceholderScreen(
                 onSignOut = onSignOut,
-                showAdminEntry = userRole == UserRole.ADMIN,
+                showAdminEntry = sessionRoleCode == BuiltInRoleCodes.ADMIN,
                 onOpenAdmin = {
                     navController.navigate(AppRoute.Admin.route)
                 },
@@ -165,8 +165,8 @@ fun EnterpriseNavHost(
 
         composable(route = AppRoute.Admin.route) {
             RoleGuardedRoute(
-                allowedRoles = AdminDestinationRoles,
-                userRole = userRole,
+                allowedRoleCodes = AdminDestinationRoles,
+                activeRoleCode = sessionRoleCode,
                 onAccessDenied = {
                     navController.navigate(AppRoute.ChatList.route) {
                         launchSingleTop = true

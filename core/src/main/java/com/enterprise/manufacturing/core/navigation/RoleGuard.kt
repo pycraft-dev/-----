@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.enterprise.manufacturing.core.R
-import com.enterprise.manufacturing.core.model.UserRole
 
 /**
  * Обёртка для экранов NavGraph: при недопустимой роли вызывается [onAccessDenied]
@@ -22,15 +21,15 @@ import com.enterprise.manufacturing.core.model.UserRole
  */
 @Composable
 fun RoleGuardedRoute(
-    allowedRoles: Set<UserRole>,
-    userRole: UserRole?,
+    allowedRoleCodes: Set<String>,
+    activeRoleCode: String?,
     modifier: Modifier = Modifier,
     onAccessDenied: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val granted = userRole != null && userRole in allowedRoles
+    val granted = activeRoleCode != null && activeRoleCode in allowedRoleCodes
 
-    LaunchedEffect(userRole, allowedRoles) {
+    LaunchedEffect(activeRoleCode, allowedRoleCodes) {
         if (!granted) {
             onAccessDenied()
         }

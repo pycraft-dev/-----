@@ -7,6 +7,7 @@ import com.enterprise.manufacturing.core.db.dao.DefectMessageDao
 import com.enterprise.manufacturing.core.db.dao.DrawingDao
 import com.enterprise.manufacturing.core.db.dao.DrawingMessageDao
 import com.enterprise.manufacturing.core.db.dao.GeneralChatMessageDao
+import com.enterprise.manufacturing.core.db.dao.RoleDao
 import com.enterprise.manufacturing.core.db.dao.TimeCategoryDao
 import com.enterprise.manufacturing.core.db.dao.TimeEntryDao
 import com.enterprise.manufacturing.core.db.dao.UserDao
@@ -15,6 +16,7 @@ import com.enterprise.manufacturing.core.db.entity.DefectMessageEntity
 import com.enterprise.manufacturing.core.db.entity.DrawingMessageEntity
 import com.enterprise.manufacturing.core.db.entity.DrawingRevisionEntity
 import com.enterprise.manufacturing.core.db.entity.GeneralChatMessageEntity
+import com.enterprise.manufacturing.core.db.entity.RoleDefinitionEntity
 import com.enterprise.manufacturing.core.db.entity.TimeCategoryEntity
 import com.enterprise.manufacturing.core.db.entity.TimeEntryEntity
 import com.enterprise.manufacturing.core.db.entity.UserEntity
@@ -29,8 +31,9 @@ import com.enterprise.manufacturing.core.db.entity.UserEntity
         GeneralChatMessageEntity::class,
         TimeCategoryEntity::class,
         TimeEntryEntity::class,
+        RoleDefinitionEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -45,6 +48,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun drawingMessageDao(): DrawingMessageDao
 
     abstract fun generalChatMessageDao(): GeneralChatMessageDao
+
+    abstract fun roleDao(): RoleDao
 
     abstract fun timeCategoryDao(): TimeCategoryDao
 

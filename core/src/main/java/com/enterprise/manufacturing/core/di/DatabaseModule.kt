@@ -8,6 +8,7 @@ import com.enterprise.manufacturing.core.db.dao.DefectMessageDao
 import com.enterprise.manufacturing.core.db.dao.DrawingDao
 import com.enterprise.manufacturing.core.db.dao.DrawingMessageDao
 import com.enterprise.manufacturing.core.db.dao.GeneralChatMessageDao
+import com.enterprise.manufacturing.core.db.dao.RoleDao
 import com.enterprise.manufacturing.core.db.dao.TimeCategoryDao
 import com.enterprise.manufacturing.core.db.dao.TimeEntryDao
 import com.enterprise.manufacturing.core.db.dao.UserDao
@@ -46,6 +47,10 @@ object DatabaseModule {
     @Provides
     fun provideGeneralChatMessageDao(db: AppDatabase): GeneralChatMessageDao =
         db.generalChatMessageDao()
+
+    @Provides
+    fun provideRoleDao(db: AppDatabase): RoleDao =
+        db.roleDao()
 
     @Provides
     fun provideTimeCategoryDao(db: AppDatabase): TimeCategoryDao = db.timeCategoryDao()

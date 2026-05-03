@@ -13,7 +13,7 @@ import com.enterprise.manufacturing.core.db.entity.GeneralChatMessageEntity
 import com.enterprise.manufacturing.core.db.entity.UserEntity
 import com.enterprise.manufacturing.core.model.SyncStatus
 import com.enterprise.manufacturing.core.model.TeamChatMessageType
-import com.enterprise.manufacturing.core.model.UserRole
+import com.enterprise.manufacturing.core.model.BuiltInRoleCodes
 import com.enterprise.manufacturing.core.utils.DispatchersProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -244,7 +244,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
                 fullName = login,
                 position = "",
                 groupKey = "sync_stub",
-                role = UserRole.WORKER.name,
+                role = BuiltInRoleCodes.WORKER,
             ),
         )
         return userDao.getByLogin(login)?.id ?: 0L
