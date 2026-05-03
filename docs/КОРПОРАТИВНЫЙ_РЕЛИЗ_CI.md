@@ -175,6 +175,8 @@ git push origin v1.0.1
 
 Ручная сборка **`update.json`** на ПК: папка **`scripts/`** — **`generate-update-json.bat`** (консоль спросит ссылку на APK и `versionCode`), подробнее в **`scripts/README-update-json.md`**.
 
+Публикация версии на GitHub одним шагом (поднять `versionCode`/`versionName`, commit, push, тег **`v*`**): **`scripts/publish-release.bat`** — см. **`scripts/README-publish-release.md`**.
+
 ## Часть C2. Без магазина и без MDM: самообновление с вашего канала (в т.ч. GitHub)
 
 Полностью «в фоне без единого нажатия» на обычных телефонах Android **не гарантируется** (политика безопасности установки). Реалистичная схема для **только свои сотрудники**:

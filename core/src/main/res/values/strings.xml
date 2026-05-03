@@ -15,8 +15,7 @@
     <string name="core_open_drawings">Чертежи</string>
     <string name="core_open_timesheet">Учёт времени</string>
     <string name="core_open_updates">Обновления</string>
-    <string name="core_home_quick_update">Проверить и скачать обновление</string>
-    <string name="core_home_quick_update_hint">Проверяет сайт с update.json и при новой версии качает APK. Новую сборку в GitHub выпускает разработчик (тег v…), не это приложение.</string>
+    <string name="core_home_quick_update_hint">Проверяет сайт с update.json и при новой версии предлагает скачать APK. Сборку в GitHub запускает CI по тегу v… (скрипт scripts/publish-release).</string>
     <string name="core_open_sync">Синхронизация</string>
     <string name="core_open_general_chat">Мессенджер</string>
     <string name="general_chat_title">Общий чат</string>

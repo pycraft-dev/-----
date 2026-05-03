@@ -152,11 +152,6 @@ fun EnterpriseNavHost(
                 onOpenUpdate = {
                     navController.navigate(UpdateNavArgs.route(autoDownload = false))
                 },
-                onQuickUpdateFromLauncher = {
-                    navController.navigate(UpdateNavArgs.route(autoDownload = true)) {
-                        launchSingleTop = true
-                    }
-                },
                 showSyncEntry = showSyncEntry,
                 onOpenSync = {
                     navController.navigate(AppRoute.Sync.route)

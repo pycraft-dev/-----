@@ -39,7 +39,6 @@ fun HomePlaceholderScreen(
     onOpenTimesheet: () -> Unit,
     showUpdateEntry: Boolean,
     onOpenUpdate: () -> Unit,
-    onQuickUpdateFromLauncher: () -> Unit,
     showSyncEntry: Boolean,
     onOpenSync: () -> Unit,
     showMessengerEntry: Boolean,
@@ -90,8 +89,8 @@ fun HomePlaceholderScreen(
             }
             if (showUpdateEntry) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onQuickUpdateFromLauncher) {
-                    Text(text = stringResource(R.string.core_home_quick_update))
+                Button(onClick = onOpenUpdate) {
+                    Text(text = stringResource(R.string.core_open_updates))
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -99,10 +98,6 @@ fun HomePlaceholderScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onOpenUpdate) {
-                    Text(text = stringResource(R.string.core_open_updates))
-                }
             }
             if (showSyncEntry) {
                 Spacer(modifier = Modifier.height(16.dp))
