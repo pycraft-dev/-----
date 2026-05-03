@@ -11,3 +11,7 @@ captures
 *.apk
 *.ap_
 *.aab
+# Подпись релиза (не коммитить)
+keystore.properties
+release-keystore.jks
+upload-keystore.jks

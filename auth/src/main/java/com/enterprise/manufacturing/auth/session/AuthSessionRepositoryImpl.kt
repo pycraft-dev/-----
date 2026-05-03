@@ -49,8 +49,7 @@ class AuthSessionRepositoryImpl @Inject constructor(
 
     init {
         scope.launch {
-            rolesRepository.seedBuiltinRolesIfEmpty()
-            seedDevAdminIfNeeded()
+            ensureBootstrapAccounts()
         }
     }
 
@@ -76,6 +75,9 @@ class AuthSessionRepositoryImpl @Inject constructor(
 
     override suspend fun signIn(login: String, password: String): Result<Unit> =
         withContext(dispatchers.io) {
+            /** Пока [init] в фоне, пользователь может нажать «Вход» раньше сида — тогда учётки ещё нет. */
+            ensureBootstrapAccounts()
+
             val trimmedLogin = login.trim()
             if (trimmedLogin.isBlank() || password.isBlank()) {
                 return@withContext Result.failure(IllegalArgumentException("empty credentials"))
@@ -183,6 +185,11 @@ class AuthSessionRepositoryImpl @Inject constructor(
             fullName = fullName,
             roleCode = roleCode,
         )
+    }
+
+    private suspend fun ensureBootstrapAccounts() {
+        rolesRepository.seedBuiltinRolesIfEmpty()
+        seedDevAdminIfNeeded()
     }
 
     private suspend fun seedDevAdminIfNeeded() {

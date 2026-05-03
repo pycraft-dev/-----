@@ -1,3 +1,38 @@
+/**
+ * Без java.util.Properties: поддержка `=`, `:` (как в .properties), полноширинного `＝`,
+ * пробелов/NBSP; комментарии `#` / `!`.
+ */
+fun parseKeyValueLines(text: String): Map<String, String> {
+    val normalized = text.replace("\r\n", "\n").replace('\r', '\n')
+    fun trimW(s: String): String =
+        s.trim { c ->
+            c.isWhitespace() ||
+                c == '\uFEFF' ||
+                c == '\u00A0' ||
+                c == '\u2007' ||
+                c == '\u202F' ||
+                c == '\u200B' ||
+                c == '\u200C' ||
+                c == '\u200D'
+        }
+    val map = linkedMapOf<String, String>()
+    val delims = charArrayOf('=', ':', '\uFF1D') // ASCII =, :, fullwidth equals
+    for (line in normalized.lineSequence()) {
+        val t = trimW(line)
+        if (t.isEmpty() || t.startsWith("#") || t.startsWith("!")) continue
+        var best = -1
+        for (d in delims) {
+            val i = t.indexOf(d)
+            if (i > 0 && (best == -1 || i < best)) best = i
+        }
+        if (best <= 0) continue
+        val key = trimW(t.substring(0, best))
+        val value = trimW(t.substring(best + 1))
+        if (key.isNotEmpty()) map[key] = value
+    }
+    return map
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,6 +53,114 @@ android {
         versionName = "1.0.0"
     }
 
+    val envStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+    val useEnvSigning =
+        !envStorePath.isNullOrBlank() && rootProject.file(envStorePath).isFile
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val useFileSigning = !useEnvSigning && keystorePropsFile.isFile
+    val releaseSigningConfigured = useEnvSigning || useFileSigning
+
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("releaseSigning") {
+                if (useEnvSigning) {
+                    val f = rootProject.file(envStorePath!!)
+                    storeFile = f
+                    storePassword =
+                        System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                            ?: error("Задайте ANDROID_KEYSTORE_PASSWORD для CI")
+                    keyAlias =
+                        System.getenv("ANDROID_KEY_ALIAS")
+                            ?: error("Задайте ANDROID_KEY_ALIAS для CI")
+                    keyPassword =
+                        System.getenv("ANDROID_KEY_PASSWORD")
+                            ?: error("Задайте ANDROID_KEY_PASSWORD для CI")
+                } else {
+                    fun readPropsText(): String {
+                        var primary =
+                            keystorePropsFile.readText(Charsets.UTF_8).trimStart {
+                                it == '\uFEFF' || it == '\u200B' || it == '\u200C' || it == '\u200D'
+                            }
+                        if (parseKeyValueLines(primary).isNotEmpty()) return primary
+                        val bytes = keystorePropsFile.readBytes()
+                        if (bytes.size >= 2) {
+                            val b0 = bytes[0].toInt() and 0xFF
+                            val b1 = bytes[1].toInt() and 0xFF
+                            if (b0 == 0xFF && b1 == 0xFE) {
+                                return keystorePropsFile.readText(Charsets.UTF_16LE).trimStart {
+                                    it == '\uFEFF' || it == '\u200B'
+                                }
+                            }
+                        }
+                        return primary
+                    }
+                    val rawProps = readPropsText()
+                    var kv = parseKeyValueLines(rawProps)
+                    if (kv.isEmpty()) {
+                        kv = parseKeyValueLines(String(keystorePropsFile.readBytes(), Charsets.ISO_8859_1))
+                    }
+                    if (kv.isEmpty()) {
+                        val len = keystorePropsFile.length()
+                        if (len == 0L) {
+                            throw GradleException(
+                                "keystore.properties на диске пустой (0 байт): ${keystorePropsFile.absolutePath}. " +
+                                    "Gradle читает только сохранённый файл. Если в редакторе есть текст — нажмите **Ctrl+S** (или File → Save), " +
+                                    "затем снова запустите сборку. Содержимое скопируйте из keystore.properties.example.",
+                            )
+                        }
+                        val head =
+                            keystorePropsFile.readBytes().take(64).joinToString(" ") {
+                                (it.toInt() and 0xFF).toString(16).padStart(2, '0')
+                            }
+                        throw GradleException(
+                            "keystore.properties: не найдено ни одной строки key=value. " +
+                                "Файл: ${keystorePropsFile.absolutePath}, размер=$len байт. " +
+                                "Начало файла (hex): $head. " +
+                                "Нужны латинские ключи storeFile, storePassword, keyAlias, keyPassword и разделитель **=** (ASCII) или **:**. " +
+                                "Сохраните как UTF-8. См. keystore.properties.example",
+                        )
+                    }
+                    fun trimValue(s: String) =
+                        s.trim { c ->
+                            c.isWhitespace() ||
+                                c == '\uFEFF' ||
+                                c == '\u00A0' ||
+                                c == '\u2007' ||
+                                c == '\u202F'
+                        }
+                    fun req(key: String): String {
+                        val direct = kv[key]?.let { trimValue(it) }.orEmpty()
+                        val v =
+                            direct.ifEmpty {
+                                kv.entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value?.let { trimValue(it) }
+                                    .orEmpty()
+                            }
+                        if (v.isEmpty()) {
+                            val keys = kv.keys.sorted().joinToString(", ")
+                            throw GradleException(
+                                "В keystore.properties нет значения для \"$key=\". " +
+                                    "Файл: ${keystorePropsFile.absolutePath}. " +
+                                    "Распознаны ключи: [$keys]. См. keystore.properties.example",
+                            )
+                        }
+                        return v
+                    }
+                    val storeRel = req("storeFile")
+                    val storeF = rootProject.file(storeRel)
+                    if (!storeF.isFile) {
+                        throw GradleException(
+                            "Keystore не найден по пути из storeFile=\"$storeRel\" (от корня проекта). Ожидался файл: ${storeF.absolutePath}",
+                        )
+                    }
+                    storeFile = storeF
+                    storePassword = req("storePassword")
+                    keyAlias = req("keyAlias")
+                    keyPassword = req("keyPassword")
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -25,6 +168,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("releaseSigning")
+            }
         }
     }
     compileOptions {
