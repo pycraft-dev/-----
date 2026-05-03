@@ -83,7 +83,10 @@ import androidx.navigation.NavHostController
 import com.enterprise.manufacturing.core.R
 import com.enterprise.manufacturing.core.chat.DirectChatViewModel
 import com.enterprise.manufacturing.core.db.entity.GeneralChatMessageEntity
+import com.enterprise.manufacturing.core.di.ChatRemoteEntryPoint
 import com.enterprise.manufacturing.core.model.TeamChatMessageType
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
@@ -163,6 +166,23 @@ fun DirectChatRoute(navController: NavHostController) {
 
     var draft by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val chatRepo =
+        remember(context.applicationContext) {
+            EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                ChatRemoteEntryPoint::class.java,
+            ).generalChatRepository()
+        }
+    val peerUid = viewModel.conversationPeerUserId
+    LaunchedEffect(peerUid, currentUserId) {
+        val uid = currentUserId ?: return@LaunchedEffect
+        chatRepo.attachRemoteDirectConversation(peerUid, uid)
+        try {
+            awaitCancellation()
+        } finally {
+            chatRepo.detachRemoteDirectConversation(peerUid)
+        }
+    }
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val snackbarHostState = remember { SnackbarHostState() }

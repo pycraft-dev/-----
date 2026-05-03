@@ -8,6 +8,13 @@ import java.io.File
 interface GeneralChatRepository {
     fun observeDirectMessages(peerUserId: Long, currentUserId: Long): Flow<List<GeneralChatMessageEntity>>
 
+    /**
+     * Включает фоновый опрос Supabase для переписки (no-op если URL/ключ не заданы).
+     */
+    fun attachRemoteDirectConversation(peerUserId: Long, currentUserId: Long)
+
+    fun detachRemoteDirectConversation(peerUserId: Long)
+
     suspend fun sendText(senderUserId: Long, recipientUserId: Long, text: String)
 
     suspend fun sendVoiceMessage(senderUserId: Long, recipientUserId: Long, audioFile: File, durationMs: Long)

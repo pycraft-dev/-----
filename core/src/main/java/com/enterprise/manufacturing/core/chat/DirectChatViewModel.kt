@@ -49,6 +49,9 @@ class DirectChatViewModel @Inject constructor(
     private val peerUserId: Long =
         checkNotNull(savedStateHandle.get<Long>(DirectChatNavArgs.PeerUserId))
 
+    /** Для синхронизации Supabase из UI. */
+    val conversationPeerUserId: Long = peerUserId
+
     private val voiceRecorder = VoiceRecorder(appContext)
 
     val peerUser: StateFlow<UserEntity?> =

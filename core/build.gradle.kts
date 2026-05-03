@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -13,6 +15,13 @@ android {
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")
+        val localProps = Properties()
+        rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(localProps::load)
+        fun esc(v: String) = v.replace("\\", "\\\\").replace("\"", "\\\"")
+        val supabaseUrl = esc(localProps.getProperty("SUPABASE_URL", ""))
+        val supabaseAnon = esc(localProps.getProperty("SUPABASE_ANON_KEY", ""))
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnon\"")
     }
 
     compileOptions {
@@ -24,7 +33,7 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -54,4 +63,8 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     kapt(libs.room.compiler)
+
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.4.1"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation(libs.ktor.client.android)
 }

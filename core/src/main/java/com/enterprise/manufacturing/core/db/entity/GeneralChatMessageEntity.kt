@@ -27,4 +27,6 @@ data class GeneralChatMessageEntity(
     val attachmentDisplayName: String? = null,
     val voiceDurationMs: Long = 0L,
     val transcript: String = "",
+    /** UUID строки в Supabase `direct_messages` (null = только локально / не синхронизировано). */
+    val remoteId: String? = null,
 )

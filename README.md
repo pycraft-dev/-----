@@ -66,8 +66,9 @@ Android app for manufacturing workflows: defect tracking, drawings (PDF/DWG), ti
 | Тема | Где искать |
 |------|------------|
 | Инструкция для пользователя без кода | [README_КЛИЕНТУ.md](README_КЛИЕНТУ.md) |
+| Онлайн личный чат (PostgreSQL через Supabase) | [supabase/README.md](supabase/README.md) и SQL [`supabase/migrations/`](supabase/migrations/) |
 | Модули и границы ответственности | раздел «Архитектура» ниже |
-| Безопасность | локальная аутентификация по хешу пароля; сообщения и данные по умолчанию **локальные**, облачная доставка чата в коде не реализована (см. `:sync`) |
+| Безопасность | локальная аутентификация по хешу пароля; текст личного чата может отправляться в Supabase если заданы `SUPABASE_*` в `local.properties`. Политики RLS в образце миграции открытые — только для тестов |
 | Фоновые задачи | `EnterpriseSyncScheduler`, WorkManager |
 
 Для производственной эксплуатации потребуются: политика паролей, резервное копирование БД, при необходимости — свой сервер синхронизации вместо заглушек.
@@ -75,7 +76,7 @@ Android app for manufacturing workflows: defect tracking, drawings (PDF/DWG), ti
 <details>
 <summary><strong>English — Documentation map</strong></summary>
 
-End‑user overview: [README_КЛИЕНТУ.md](README_КЛИЕНТУ.md). Security note: offline‑first Room storage; chat sync stubs do not push to a real backend until implemented.
+End‑user overview: [README_КЛИЕНТУ.md](README_КЛИЕНТУ.md). Optional Supabase direct chat: configure `local.properties` and run SQL migrations; sample RLS is permissive — tighten before production.
 
 </details>
 
@@ -86,17 +87,18 @@ End‑user overview: [README_КЛИЕНТУ.md](README_КЛИЕНТУ.md). Secur
 ```
 ManufacturingEnterprise (root)
 ├── app/          — точка входа, Navigation, сборка приложения
-├── core/         — БД Room, навигация, чат (репозитории), общие сущности
+├── core/         — БД Room, навигация, чат, Supabase (ключи через BuildConfig)
 ├── auth/         — локальная сессия DataStore + вход по пользователям Room
 ├── admin/        — админ‑панель пользователей
 ├── defect/       — брак / дефекты
 ├── drawings/     — чертежи, PDF-превью, обсуждение по версии
 ├── timesheet/    — учёт времени (ручной ввод длительности)
 ├── sync/         — WorkManager и заглушки синхронизации
-└── update/       — канал проверки обновлений (Retrofit / заглушка)
+├── update/       — канал проверки обновлений (Retrofit / заглушка)
+└── supabase/     — SQL для облака (PostgreSQL), инструкция по проекту
 ```
 
-**Стек:** Kotlin, Compose, Navigation-Compose, Hilt, Room, DataStore, Coroutines/Flow, WorkManager.
+**Стек:** Kotlin, Compose, Navigation-Compose, Hilt, Room, DataStore, Coroutines/Flow, Supabase PostgREST, WorkManager.
 
 ---
 

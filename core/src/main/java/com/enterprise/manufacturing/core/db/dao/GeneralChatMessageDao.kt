@@ -37,6 +37,12 @@ interface GeneralChatMessageDao {
     @Query("SELECT * FROM general_chat_messages WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): GeneralChatMessageEntity?
 
+    @Query("SELECT * FROM general_chat_messages WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): GeneralChatMessageEntity?
+
     @Query("UPDATE general_chat_messages SET transcript = :text WHERE id = :messageId")
     suspend fun updateTranscript(messageId: Long, text: String)
+
+    @Query("UPDATE general_chat_messages SET remoteId = :remoteId, syncStatus = :sync WHERE id = :localId")
+    suspend fun updateRemotePayload(localId: Long, remoteId: String?, sync: String)
 }
