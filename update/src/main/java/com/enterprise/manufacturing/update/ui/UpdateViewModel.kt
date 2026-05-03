@@ -53,22 +53,35 @@ class UpdateViewModel @Inject constructor(
     )
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
 
+    /** Ручная проверка (кнопка на экране обновлений). */
     fun checkForUpdates() {
+        refreshForUpdate(autoDownloadApk = false)
+    }
+
+    /**
+     * Проверка манифеста; при [autoDownloadApk] и наличии ссылки сразу качает APK (рабочий стол → «Обновить»).
+     */
+    fun refreshForUpdate(autoDownloadApk: Boolean) {
+        val phase = _state.value.phase
+        if (phase is UpdatePhase.Checking || phase is UpdatePhase.Downloading) return
         viewModelScope.launch {
             _state.update { it.copy(phase = UpdatePhase.Checking) }
             updateRepository.fetchManifest().fold(
                 onSuccess = { manifest ->
-                    _state.update { ui ->
-                        if (manifest.latestVersionCode <= ui.currentVersionCode) {
-                            ui.copy(phase = UpdatePhase.UpToDate)
-                        } else {
-                            ui.copy(
+                    if (manifest.latestVersionCode <= installed.first) {
+                        _state.update { it.copy(phase = UpdatePhase.UpToDate) }
+                    } else {
+                        _state.update {
+                            it.copy(
                                 phase = UpdatePhase.Offer(
                                     latestVersionCode = manifest.latestVersionCode,
                                     apkUrl = manifest.apkUrl,
                                     releaseNotes = manifest.releaseNotes,
                                 ),
                             )
+                        }
+                        if (autoDownloadApk && manifest.apkUrl.isNotBlank()) {
+                            performDownload(manifest.apkUrl)
                         }
                     }
                 },
@@ -83,25 +96,27 @@ class UpdateViewModel @Inject constructor(
 
     fun downloadOffer() {
         val offer = (_state.value.phase as? UpdatePhase.Offer) ?: return
-        val url = offer.apkUrl
-        if (url.isBlank()) return
-
+        if (offer.apkUrl.isBlank()) return
         viewModelScope.launch {
-            _state.update { it.copy(phase = UpdatePhase.Downloading) }
-            val target = File(context.cacheDir, "updates/manufacturing_update.apk")
-            updateRepository.downloadApk(url, target).fold(
-                onSuccess = {
-                    _state.update {
-                        it.copy(phase = UpdatePhase.ReadyInstall(target))
-                    }
-                },
-                onFailure = {
-                    _state.update {
-                        it.copy(phase = UpdatePhase.Error(R.string.update_err_download))
-                    }
-                },
-            )
+            performDownload(offer.apkUrl)
         }
+    }
+
+    private suspend fun performDownload(url: String) {
+        _state.update { it.copy(phase = UpdatePhase.Downloading) }
+        val target = File(context.cacheDir, "updates/manufacturing_update.apk")
+        updateRepository.downloadApk(url, target).fold(
+            onSuccess = {
+                _state.update {
+                    it.copy(phase = UpdatePhase.ReadyInstall(target))
+                }
+            },
+            onFailure = {
+                _state.update {
+                    it.copy(phase = UpdatePhase.Error(R.string.update_err_download))
+                }
+            },
+        )
     }
 
     fun clearError() {
@@ -126,12 +141,13 @@ class UpdateViewModel @Inject constructor(
     private companion object {
         private fun readInstalledVersion(context: Context): Pair<Int, String> {
             val pi = context.packageManager.getPackageInfo(context.packageName, 0)
-            val longVc = if (Build.VERSION.SDK_INT >= 28) {
-                pi.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                pi.versionCode.toLong()
-            }
+            val longVc =
+                if (Build.VERSION.SDK_INT >= 28) {
+                    pi.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    pi.versionCode.toLong()
+                }
             val vc = longVc.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
             return vc to (pi.versionName.orEmpty())
         }

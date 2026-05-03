@@ -11,6 +11,13 @@
     <string name="sync_conflict_hint">Конфликты (этап сервера): планируется last-write-wins по метке времени и версии сущности.</string>
     <string name="sync_run_now">Синхронизировать сейчас</string>
 
+    <string name="sync_users_header">Пользователи (Supabase)</string>
+    <string name="sync_users_hint">Таблица enterprise_users. На всех устройствах одинаковые SUPABASE_URL и ключ в local.properties. Логины должны совпадать с облаком после загрузки.</string>
+    <string name="sync_users_pull">Загрузить пользователей с сервера</string>
+    <string name="sync_users_ok">Подтянуто записей: %d</string>
+    <string name="sync_users_err">Не удалось загрузить пользователей (сеть или Supabase)</string>
+    <string name="sync_users_skipped">Supabase не настроен — задайте URL и anon key</string>
+
     <string name="sync_wm_none">нет активной задачи</string>
     <string name="sync_wm_enqueued">в очереди</string>
     <string name="sync_wm_running">выполняется</string>

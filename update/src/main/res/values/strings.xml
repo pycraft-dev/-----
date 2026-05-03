@@ -11,9 +11,14 @@
     <string name="update_ready_install">Файл загружен. Нажмите «Установить».</string>
     <string name="update_install">Установить</string>
     <string name="update_close_result">Закрыть</string>
-    <string name="update_apk_url_empty_hint">В манифесте обновления нет ссылки на APK — загрузка недоступна (режим заглушки).</string>
+    <string name="update_apk_url_empty_hint">В манифесте нет ссылки на APK. Проверьте update.json и поле apkUrl (HTTPS).</string>
     <string name="update_err_check">Не удалось получить данные обновления</string>
     <string name="update_err_download">Не удалось загрузить файл</string>
     <string name="update_err_install">Не удалось открыть установщик</string>
     <string name="update_need_install_permission">Разрешите установку из этого источника в настройках</string>
+    <string name="update_bg_channel_name">Обновления приложения</string>
+    <string name="update_bg_channel_desc">Фоновая проверка версии (раз в 15 мин при сети)</string>
+    <string name="update_bg_notify_title">Доступна новая версия</string>
+    <string name="update_bg_notify_line">Версия на сервере: %1$d</string>
+    <string name="update_bg_notify_text">На сервере версия %1$d. Откройте приложение → раздел «Обновление».</string>
 </resources>

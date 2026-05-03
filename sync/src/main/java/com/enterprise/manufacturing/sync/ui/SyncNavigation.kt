@@ -6,17 +6,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,6 +41,8 @@ fun SyncRoute(navController: NavHostController) {
         state = state,
         onBack = { navController.popBackStack() },
         onSyncNow = { viewModel.requestSyncNow() },
+        onPullUsers = { viewModel.pullUsersFromServer() },
+        onDismissUserMessage = { viewModel.clearUserSyncMessage() },
     )
 }
 
@@ -47,6 +52,8 @@ private fun SyncScreen(
     state: SyncDashboardUiState,
     onBack: () -> Unit,
     onSyncNow: () -> Unit,
+    onPullUsers: () -> Unit,
+    onDismissUserMessage: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -117,6 +124,56 @@ private fun SyncScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.sync_users_header),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                modifier = Modifier.padding(top = 8.dp),
+                text = stringResource(R.string.sync_users_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                enabled = !state.userSyncBusy,
+                onClick = onPullUsers,
+            ) {
+                if (state.userSyncBusy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.sync_users_pull))
+                }
+            }
+            state.userSyncMessageRes?.let { resId ->
+                val messageText =
+                    if (resId == R.string.sync_users_ok) {
+                        stringResource(resId, state.userSyncMessageArg)
+                    } else {
+                        stringResource(resId)
+                    }
+                Text(
+                    modifier = Modifier.padding(top = 12.dp),
+                    text = messageText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color =
+                        if (resId == R.string.sync_users_err || resId == R.string.sync_users_skipped) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                )
+                TextButton(onClick = onDismissUserMessage) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            }
 
             Button(
                 modifier = Modifier

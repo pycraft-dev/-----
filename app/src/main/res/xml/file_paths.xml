@@ -3,6 +3,9 @@
     <cache-path
         name="app_updates"
         path="updates/" />
+    <cache-path
+        name="chat_camera"
+        path="camera_capture/" />
     <files-path
         name="internal_files"
         path="." />

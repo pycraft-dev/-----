@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -14,6 +16,13 @@ android {
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")
+        val localProps = Properties()
+        rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { localProps.load(it) }
+        fun esc(v: String) = v.replace("\\", "\\\\").replace("\"", "\\\"")
+        val fromEnv = System.getenv("UPDATE_MANIFEST_URL")?.trim().orEmpty()
+        val fromFile = localProps.getProperty("UPDATE_MANIFEST_URL", "").trim()
+        val manifestUrl = esc(if (fromEnv.isNotEmpty()) fromEnv else fromFile)
+        buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$manifestUrl\"")
     }
 
     compileOptions {
@@ -25,7 +34,7 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
     }
 }
 
@@ -47,8 +56,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
 
     implementation(libs.hilt.android)

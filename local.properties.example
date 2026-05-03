@@ -1,0 +1,3 @@
+# Скопируйте в local.properties (файл не коммитить).
+# Полный HTTPS-URL JSON манифеста (поля versionCode, apkUrl, releaseNotes).
+# UPDATE_MANIFEST_URL=https://raw.githubusercontent.com/OWNER/REPO/branch/distribution/update.json

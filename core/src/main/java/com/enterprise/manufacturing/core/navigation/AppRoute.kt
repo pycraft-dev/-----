@@ -42,6 +42,14 @@ sealed class AppRoute(val route: String) {
     data object DirectChat : AppRoute("direct_chat/{peerUserId}")
 }
 
+/** Маршрут экрана обновлений с опциональным авто-скачиванием APK (`auto=1`). */
+object UpdateNavArgs {
+    const val AutoDownload = "auto"
+
+    fun route(autoDownload: Boolean): String =
+        "${AppRoute.Update.route}?$AutoDownload=${if (autoDownload) 1 else 0}"
+}
+
 /** Имя аргумента NavController ↔ SavedStateHandle для [AppRoute.DirectChat]. */
 object DirectChatNavArgs {
     const val PeerUserId = "peerUserId"

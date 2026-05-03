@@ -31,6 +31,7 @@ android {
 dependencies {
     implementation(project(":defect"))
     implementation(project(":core"))
+    implementation(project(":update"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)

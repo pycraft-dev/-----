@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
  * @param drawingDetailContent карточка версии и превью PDF (:drawings).
  * @param timesheetTimerContent таймер учёта времени (:timesheet).
  * @param timesheetHistoryContent история интервалов и экспорт CSV (:timesheet).
- * @param updateContent проверка версии и установка APK (:update).
+ * @param updateContent проверка версии и установка APK (:update); `true` — авто-проверка и скачивание с рабочего стола.
  * @param syncContent статус синхронизации и ручной запуск WorkManager (:sync).
  */
 @Composable
@@ -53,7 +53,7 @@ fun EnterpriseNavHost(
     drawingDetailContent: @Composable () -> Unit,
     timesheetTimerContent: @Composable () -> Unit,
     timesheetHistoryContent: @Composable () -> Unit,
-    updateContent: @Composable () -> Unit,
+    updateContent: @Composable (autoDownloadApk: Boolean) -> Unit,
     syncContent: @Composable () -> Unit,
     chatListContent: @Composable () -> Unit,
     directChatContent: @Composable () -> Unit,
@@ -150,7 +150,12 @@ fun EnterpriseNavHost(
                 },
                 showUpdateEntry = showUpdateEntry,
                 onOpenUpdate = {
-                    navController.navigate(AppRoute.Update.route)
+                    navController.navigate(UpdateNavArgs.route(autoDownload = false))
+                },
+                onQuickUpdateFromLauncher = {
+                    navController.navigate(UpdateNavArgs.route(autoDownload = true)) {
+                        launchSingleTop = true
+                    }
                 },
                 showSyncEntry = showSyncEntry,
                 onOpenSync = {
@@ -233,8 +238,18 @@ fun EnterpriseNavHost(
             timesheetHistoryContent()
         }
 
-        composable(route = AppRoute.Update.route) {
-            updateContent()
+        composable(
+            route = "${AppRoute.Update.route}?${UpdateNavArgs.AutoDownload}={${UpdateNavArgs.AutoDownload}}",
+            arguments =
+                listOf(
+                    navArgument(UpdateNavArgs.AutoDownload) {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    },
+                ),
+        ) { entry ->
+            val auto = (entry.arguments?.getInt(UpdateNavArgs.AutoDownload) ?: 0) == 1
+            updateContent(auto)
         }
 
         composable(route = AppRoute.Sync.route) {

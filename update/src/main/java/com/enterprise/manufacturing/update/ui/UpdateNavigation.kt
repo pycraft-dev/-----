@@ -39,12 +39,21 @@ import com.enterprise.manufacturing.update.install.AppUpdateInstaller
 import kotlinx.coroutines.launch
 
 @Composable
-fun UpdateRoute(navController: NavHostController) {
+fun UpdateRoute(
+    navController: NavHostController,
+    autoDownloadApk: Boolean = false,
+) {
     val viewModel: UpdateViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    LaunchedEffect(autoDownloadApk) {
+        if (autoDownloadApk) {
+            viewModel.refreshForUpdate(autoDownloadApk = true)
+        }
+    }
 
     LaunchedEffect(state.phase) {
         val err = state.phase as? UpdatePhase.Error ?: return@LaunchedEffect

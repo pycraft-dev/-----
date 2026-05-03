@@ -3,8 +3,11 @@ package com.enterprise.manufacturing.core.navigation
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -36,6 +39,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -60,6 +64,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -67,9 +72,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -86,8 +93,10 @@ import com.enterprise.manufacturing.core.db.entity.GeneralChatMessageEntity
 import com.enterprise.manufacturing.core.di.ChatRemoteEntryPoint
 import com.enterprise.manufacturing.core.model.TeamChatMessageType
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -138,6 +147,56 @@ private fun buildTimeline(
         result += TimelineEntry.MessageRow(m, timeText)
     }
     return result
+}
+
+private fun isImageAttachmentMime(mime: String?): Boolean =
+    (mime?.lowercase(Locale.US) ?: "").startsWith("image/")
+
+private fun decodeSampledChatBitmap(path: String, maxSidePx: Int): android.graphics.Bitmap? {
+    val file = File(path)
+    if (!file.exists() || !file.isFile) return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sampleSize = 1
+    while (bounds.outWidth / sampleSize > maxSidePx || bounds.outHeight / sampleSize > maxSidePx) {
+        sampleSize *= 2
+    }
+    return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sampleSize })
+}
+
+@Composable
+private fun ChatImageThumbnailContent(path: String, modifier: Modifier = Modifier) {
+    val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, path) {
+        value = withContext(Dispatchers.IO) { decodeSampledChatBitmap(path, maxSidePx = 1440) }
+    }
+    Box(
+        modifier = modifier.heightIn(max = 240.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            bitmap != null ->
+                Image(
+                    bitmap = bitmap!!.asImageBitmap(),
+                    contentDescription = stringResource(R.string.chat_image_attachment_cd),
+                    modifier = Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.Fit,
+                )
+            else ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp,
+                    )
+                    Text(
+                        stringResource(R.string.chat_image_loading),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+        }
+    }
 }
 
 @Composable
@@ -208,6 +267,56 @@ fun DirectChatRoute(navController: NavHostController) {
         if (granted) viewModel.startRecording()
     }
 
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    val takePictureLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicture(),
+        ) { success ->
+            val uri = pendingCameraUri
+            pendingCameraUri = null
+            if (success && uri != null) {
+                viewModel.sendAttachment(uri, draft.trim())
+                draft = ""
+            }
+        }
+
+    val cameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            if (!granted) return@rememberLauncherForActivityResult
+            val dir = File(context.cacheDir, "camera_capture").apply { mkdirs() }
+            val file = File(dir, "chat_${System.currentTimeMillis()}.jpg")
+            val uri =
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file,
+                )
+            pendingCameraUri = uri
+            takePictureLauncher.launch(uri)
+        }
+
+    val onCameraClick: () -> Unit = {
+        when {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED -> {
+                val dir = File(context.cacheDir, "camera_capture").apply { mkdirs() }
+                val file = File(dir, "chat_${System.currentTimeMillis()}.jpg")
+                val uri =
+                    FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file,
+                    )
+                pendingCameraUri = uri
+                takePictureLauncher.launch(uri)
+            }
+
+            else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     DirectChatScreen(
         drawerState = drawerState,
         navController = navController,
@@ -223,6 +332,7 @@ fun DirectChatRoute(navController: NavHostController) {
             draft = ""
         },
         onAttachClick = { pickFileLauncher.launch(arrayOf("*/*")) },
+        onCameraClick = onCameraClick,
         onMicClick = {
             if (recording) {
                 viewModel.stopRecordingAndSend()
@@ -300,6 +410,7 @@ private fun DirectChatScreen(
     playingMessageId: Long?,
     onSendText: () -> Unit,
     onAttachClick: () -> Unit,
+    onCameraClick: () -> Unit,
     onMicClick: () -> Unit,
     onCancelRecording: () -> Unit,
     onPlayVoice: (Long, String) -> Unit,
@@ -501,10 +612,10 @@ private fun DirectChatScreen(
                                     tint = onBar,
                                 )
                             }
-                            IconButton(onClick = { }, modifier = Modifier.size(44.dp)) {
+                            IconButton(onClick = onCameraClick, modifier = Modifier.size(44.dp)) {
                                 Icon(
                                     Icons.Outlined.PhotoCamera,
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.chat_camera_cd),
                                     tint = onBar.copy(alpha = 0.85f),
                                 )
                             }
@@ -781,26 +892,61 @@ private fun MessengerMessageBubble(
                 ) {
                     Column {
                         if (path != null) {
-                            val name = msg.attachmentDisplayName ?: path.substringAfterLast('/')
                             val mime = msg.attachmentMime ?: "*/*"
-                            Text(
-                                modifier = Modifier.clickable { onOpenFile(path, mime) },
-                                text = name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (fromMe) Color.White else MaterialTheme.colorScheme.primary,
-                            )
+                            if (isImageAttachmentMime(mime)) {
+                                Column(
+                                    modifier = Modifier.clickable { onOpenFile(path, mime) },
+                                ) {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(10.dp)),
+                                    ) {
+                                        ChatImageThumbnailContent(path = path)
+                                    }
+                                    val fileLabel = msg.attachmentDisplayName ?: path.substringAfterLast('/')
+                                    if (fileLabel.isNotBlank()) {
+                                        Text(
+                                            text = fileLabel,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color =
+                                                if (fromMe) Color.White.copy(alpha = 0.85f)
+                                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 6.dp),
+                                            maxLines = 1,
+                                        )
+                                    }
+                                    if (msg.body.isNotBlank()) {
+                                        Text(
+                                            text = msg.body,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (fromMe) Color.White else MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.padding(top = 6.dp),
+                                        )
+                                    }
+                                }
+                            } else {
+                                val name = msg.attachmentDisplayName ?: path.substringAfterLast('/')
+                                Text(
+                                    modifier = Modifier.clickable { onOpenFile(path, mime) },
+                                    text = name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (fromMe) Color.White else MaterialTheme.colorScheme.primary,
+                                )
+                                if (msg.body.isNotBlank()) {
+                                    Text(
+                                        msg.body,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (fromMe) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
                         } else {
                             Text(
                                 stringResource(R.string.chat_attachment_missing),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        if (msg.body.isNotBlank()) {
-                            Text(
-                                msg.body,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (fromMe) Color.White else MaterialTheme.colorScheme.onSurface,
                             )
                         }
                         Text(

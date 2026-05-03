@@ -5,6 +5,7 @@ import com.enterprise.manufacturing.auth.security.PasswordHasher
 import com.enterprise.manufacturing.core.db.dao.RoleDao
 import com.enterprise.manufacturing.core.db.dao.UserDao
 import com.enterprise.manufacturing.core.db.entity.UserEntity
+import com.enterprise.manufacturing.core.sync.UserDirectorySync
 import com.enterprise.manufacturing.core.utils.DispatchersProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -19,6 +20,7 @@ class AdminUsersRepositoryImpl @Inject constructor(
     private val roleLoginGenerator: RoleLoginGenerator,
     private val passwordHasher: PasswordHasher,
     private val dispatchers: DispatchersProvider,
+    private val userDirectorySync: UserDirectorySync,
 ) : AdminUsersRepository {
 
     override fun observeUsers(): Flow<List<UserEntity>> = userDao.observeAll()
@@ -54,6 +56,10 @@ class AdminUsersRepositoryImpl @Inject constructor(
                 role = rc,
             ),
         )
+        val saved = userDao.getByLogin(login)
+        if (saved != null) {
+            runCatching { userDirectorySync.pushUserToRemote(saved) }
+        }
         Result.success(login)
     }
 

@@ -15,6 +15,8 @@
     <string name="core_open_drawings">Чертежи</string>
     <string name="core_open_timesheet">Учёт времени</string>
     <string name="core_open_updates">Обновления</string>
+    <string name="core_home_quick_update">Проверить и скачать обновление</string>
+    <string name="core_home_quick_update_hint">Проверяет сайт с update.json и при новой версии качает APK. Новую сборку в GitHub выпускает разработчик (тег v…), не это приложение.</string>
     <string name="core_open_sync">Синхронизация</string>
     <string name="core_open_general_chat">Мессенджер</string>
     <string name="general_chat_title">Общий чат</string>
@@ -35,4 +37,7 @@
     <string name="chat_add_transcript">Расшифровать голосовое (→T)</string>
     <string name="chat_transcript_failed">Не удалось распознать голосовое на устройстве. Нужны сервисы Google и Android 13+.</string>
     <string name="chat_attachment_missing">Вложение отсутствует на устройстве</string>
+    <string name="chat_image_attachment_cd">Изображение во вложении</string>
+    <string name="chat_image_loading">Загрузка фото…</string>
+    <string name="chat_camera_cd">Сделать фото</string>
 </resources>
