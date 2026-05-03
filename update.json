@@ -1,0 +1,5 @@
+{
+  "versionCode": 1,
+  "apkUrl": "https://github.com/OWNER/REPO/releases/latest/download/app-release.apk",
+  "releaseNotes": "Замените OWNER/REPO на ваш логин и репозиторий. После push ветки укажите в local.properties UPDATE_MANIFEST_URL на raw-ссылку на этот файл (см. комментарий в ответе)."
+}
