@@ -64,7 +64,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
             if (online) {
                 runCatching {
                     val inserted =
-                        supabase.insertText(
+                        supabase.insertDirectMessage(
                             DirectMessageInsert(
                                 conversationKey = key,
                                 senderLogin = sender.login,
@@ -73,13 +73,7 @@ class GeneralChatRepositoryImpl @Inject constructor(
                                 messageType = TeamChatMessageType.TEXT.name,
                             ),
                         )
-                    dao.insert(
-                        entityForTextFromRemote(
-                            row = inserted,
-                            senderLocalId = senderUserId,
-                            recipientLocalId = recipientUserId,
-                        ),
-                    )
+                    dao.insert(entityForRemoteRow(inserted, senderUserId, recipientUserId))
                     return@withContext
                 }
             }
@@ -109,6 +103,32 @@ class GeneralChatRepositoryImpl @Inject constructor(
     ) {
         if (!audioFile.exists()) return
         withContext(dispatchers.io) {
+            val sender = userDao.getById(senderUserId) ?: return@withContext
+            val recipient = userDao.getById(recipientUserId) ?: return@withContext
+            val key = dmConversationKey(sender.login, recipient.login)
+            val online = supabase.clientOrNull() != null
+            if (online) {
+                runCatching {
+                    val storagePath = supabase.uploadChatObject(key, audioFile, "audio/mp4")
+                    val inserted =
+                        supabase.insertDirectMessage(
+                            DirectMessageInsert(
+                                conversationKey = key,
+                                senderLogin = sender.login,
+                                recipientLogin = recipient.login,
+                                body = "",
+                                messageType = TeamChatMessageType.VOICE.name,
+                                attachmentStoragePath = storagePath,
+                                attachmentMime = "audio/mp4",
+                                attachmentDisplayName = audioFile.name,
+                                voiceDurationMs = durationMs,
+                                transcript = "",
+                            ),
+                        )
+                    dao.insert(entityForRemoteRow(inserted, senderUserId, recipientUserId))
+                    return@withContext
+                }
+            }
             insertBase(
                 senderUserId = senderUserId,
                 recipientUserId = recipientUserId,
@@ -140,6 +160,33 @@ class GeneralChatRepositoryImpl @Inject constructor(
                     input.copyTo(output)
                 }
             } ?: return@withContext
+
+            val sender = userDao.getById(senderUserId) ?: return@withContext
+            val recipient = userDao.getById(recipientUserId) ?: return@withContext
+            val key = dmConversationKey(sender.login, recipient.login)
+            val online = supabase.clientOrNull() != null
+            if (online) {
+                runCatching {
+                    val storagePath = supabase.uploadChatObject(key, dest, mime)
+                    val inserted =
+                        supabase.insertDirectMessage(
+                            DirectMessageInsert(
+                                conversationKey = key,
+                                senderLogin = sender.login,
+                                recipientLogin = recipient.login,
+                                body = caption.trim(),
+                                messageType = TeamChatMessageType.FILE.name,
+                                attachmentStoragePath = storagePath,
+                                attachmentMime = mime,
+                                attachmentDisplayName = displayName,
+                                voiceDurationMs = 0L,
+                                transcript = "",
+                            ),
+                        )
+                    dao.insert(entityForRemoteRow(inserted, senderUserId, recipientUserId))
+                    return@withContext
+                }
+            }
 
             insertBase(
                 senderUserId = senderUserId,
@@ -209,29 +256,19 @@ class GeneralChatRepositoryImpl @Inject constructor(
         if (dao.getByRemoteId(row.id) != null) return
         val parsedType =
             runCatching { TeamChatMessageType.valueOf(row.messageType) }.getOrNull()
-                ?: TeamChatMessageType.TEXT
-        if (parsedType != TeamChatMessageType.TEXT) return
+                ?: return
+        if (parsedType !in REMOTE_MERGE_TYPES) return
+        if (parsedType != TeamChatMessageType.TEXT &&
+            row.attachmentStoragePath.isNullOrBlank()
+        ) {
+            return
+        }
 
         val senderId = ensureStubUser(row.senderLogin)
         val recipientId = ensureStubUser(row.recipientLogin)
         if (senderId <= 0L || recipientId <= 0L) return
 
-        dao.insert(
-            GeneralChatMessageEntity(
-                senderUserId = senderId,
-                recipientUserId = recipientId,
-                messageType = parsedType.name,
-                body = row.body,
-                createdAtEpochMs = parseCreatedAtEpoch(row.createdAtIso),
-                syncStatus = SyncStatus.SENT.name,
-                attachmentLocalPath = null,
-                attachmentMime = null,
-                attachmentDisplayName = null,
-                voiceDurationMs = 0L,
-                transcript = "",
-                remoteId = row.id,
-            ),
-        )
+        dao.insert(entityForRemoteRow(row, senderId, recipientId))
     }
 
     private suspend fun ensureStubUser(loginRaw: String): Long {
@@ -250,25 +287,33 @@ class GeneralChatRepositoryImpl @Inject constructor(
         return userDao.getByLogin(login)?.id ?: 0L
     }
 
-    private fun entityForTextFromRemote(
+    private fun entityForRemoteRow(
         row: DirectMessageRemoteRow,
         senderLocalId: Long,
         recipientLocalId: Long,
-    ): GeneralChatMessageEntity =
-        GeneralChatMessageEntity(
+    ): GeneralChatMessageEntity {
+        val parsedType =
+            runCatching { TeamChatMessageType.valueOf(row.messageType) }.getOrNull()
+                ?: TeamChatMessageType.TEXT
+        val attachUrl =
+            row.attachmentStoragePath
+                ?.takeIf { it.isNotBlank() }
+                ?.let { supabase.publicUrlForStoragePath(it) }
+        return GeneralChatMessageEntity(
             senderUserId = senderLocalId,
             recipientUserId = recipientLocalId,
-            messageType = TeamChatMessageType.TEXT.name,
+            messageType = parsedType.name,
             body = row.body,
             createdAtEpochMs = parseCreatedAtEpoch(row.createdAtIso),
             syncStatus = SyncStatus.SENT.name,
-            attachmentLocalPath = null,
-            attachmentMime = null,
-            attachmentDisplayName = null,
-            voiceDurationMs = 0L,
-            transcript = "",
+            attachmentLocalPath = attachUrl,
+            attachmentMime = row.attachmentMime,
+            attachmentDisplayName = row.attachmentDisplayName,
+            voiceDurationMs = row.voiceDurationMs,
+            transcript = row.transcript,
             remoteId = row.id,
         )
+    }
 
     private suspend fun insertBase(
         senderUserId: Long,
@@ -318,6 +363,13 @@ class GeneralChatRepositoryImpl @Inject constructor(
 
     companion object {
         const val CHAT_ATTACH_DIR = "chat_attach"
+
+        private val REMOTE_MERGE_TYPES =
+            setOf(
+                TeamChatMessageType.TEXT,
+                TeamChatMessageType.VOICE,
+                TeamChatMessageType.FILE,
+            )
 
         private const val POLL_PERIOD_MS = 5_000L
 

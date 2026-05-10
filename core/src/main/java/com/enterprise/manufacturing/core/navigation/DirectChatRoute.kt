@@ -98,6 +98,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.URL
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -153,6 +154,29 @@ private fun isImageAttachmentMime(mime: String?): Boolean =
     (mime?.lowercase(Locale.US) ?: "").startsWith("image/")
 
 private fun decodeSampledChatBitmap(path: String, maxSidePx: Int): android.graphics.Bitmap? {
+    if (path.startsWith("http://", ignoreCase = true) ||
+        path.startsWith("https://", ignoreCase = true)
+    ) {
+        return runCatching {
+            val data = URL(path).openStream().use { it.readBytes() }
+            if (data.isEmpty()) return@runCatching null
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+            var sampleSize = 1
+            while (bounds.outWidth / sampleSize > maxSidePx ||
+                bounds.outHeight / sampleSize > maxSidePx
+            ) {
+                sampleSize *= 2
+            }
+            BitmapFactory.decodeByteArray(
+                data,
+                0,
+                data.size,
+                BitmapFactory.Options().apply { inSampleSize = sampleSize },
+            )
+        }.getOrNull()
+    }
     val file = File(path)
     if (!file.exists() || !file.isFile) return null
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -351,20 +375,31 @@ fun DirectChatRoute(navController: NavHostController) {
             viewModel.transcribeVoiceMessage(msgId, path)
         },
         onOpenFile = { path, mime ->
-            val file = File(path)
-            if (file.exists()) {
-                val uri =
-                    FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file,
-                    )
+            if (path.startsWith("http://", ignoreCase = true) ||
+                path.startsWith("https://", ignoreCase = true)
+            ) {
                 val viewIntent =
                     Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, mime)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        setDataAndType(Uri.parse(path), mime)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                context.startActivity(Intent.createChooser(viewIntent, null))
+                runCatching { context.startActivity(Intent.createChooser(viewIntent, null)) }
+            } else {
+                val file = File(path)
+                if (file.exists()) {
+                    val uri =
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file,
+                        )
+                    val viewIntent =
+                        Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, mime)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    context.startActivity(Intent.createChooser(viewIntent, null))
+                }
             }
         },
         onNavigateDefects = {

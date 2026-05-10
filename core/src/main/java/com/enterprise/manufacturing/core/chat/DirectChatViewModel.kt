@@ -39,6 +39,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
 import java.util.Locale
 import javax.inject.Inject
 
@@ -217,7 +219,25 @@ class DirectChatViewModel @Inject constructor(
 
     fun transcribeVoiceMessage(messageId: Long, audioPath: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val file = File(audioPath)
+            val file =
+                if (audioPath.startsWith("http://", ignoreCase = true) ||
+                    audioPath.startsWith("https://", ignoreCase = true)
+                ) {
+                    val tmp =
+                        File(
+                            appContext.cacheDir,
+                            "voice_dl_${messageId}_${System.currentTimeMillis()}.m4a",
+                        )
+                    runCatching {
+                        URL(audioPath).openStream().use { input ->
+                            FileOutputStream(tmp).use { output -> input.copyTo(output) }
+                        }
+                    }.getOrElse { return@launch }
+                    if (!tmp.exists() || tmp.length() == 0L) return@launch
+                    tmp
+                } else {
+                    File(audioPath)
+                }
             if (!file.exists()) return@launch
             val text =
                 VoiceMessageTranscriber.transcribe(
@@ -225,6 +245,11 @@ class DirectChatViewModel @Inject constructor(
                     file,
                     Locale.forLanguageTag("ru-RU"),
                 )
+            if (file.parentFile?.path == appContext.cacheDir.path &&
+                file.name.startsWith("voice_dl_")
+            ) {
+                file.delete()
+            }
             if (!text.isNullOrBlank()) {
                 repository.setTranscript(messageId, text)
             } else {

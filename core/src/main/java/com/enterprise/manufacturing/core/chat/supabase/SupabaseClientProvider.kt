@@ -4,6 +4,7 @@ import com.enterprise.manufacturing.core.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.serializer.KotlinXSerializer
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -33,6 +34,7 @@ class SupabaseClientProvider @Inject constructor() {
                             },
                         )
                     install(Postgrest)
+                    install(Storage)
                 }
             }
         }
